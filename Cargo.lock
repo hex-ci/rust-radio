@@ -2825,7 +2825,7 @@ dependencies = [
 
 [[package]]
 name = "rust-radio-app"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2841,7 +2841,7 @@ dependencies = [
 
 [[package]]
 name = "rust-radio-audio"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "cpal",
@@ -2857,7 +2857,7 @@ dependencies = [
 
 [[package]]
 name = "rust-radio-core"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "chrono",
