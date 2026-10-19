@@ -1,0 +1,24 @@
+[package]
+name = "rust-radio-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "云听电台桌面客户端"
+
+[dependencies]
+rust-radio-core = { path = "../rust-radio-core" }
+rust-radio-audio = { path = "../rust-radio-audio" }
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+eframe = { version = "0.37", default-features = false, features = ["glow", "default_fonts", "wayland", "x11"] }
+egui = "0.37"
+reqwest.workspace = true
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif"] }
+
+[[bin]]
+name = "rust-radio"
+path = "src/main.rs"

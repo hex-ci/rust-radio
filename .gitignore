@@ -1,0 +1,12 @@
+/target
+/dist
+.DS_Store
+*.log
+*.mov
+*.tmp
+.env
+.idea/
+.vscode/
+
+# 内部笔记、设计稿与逆向资料，不入库
+/.docs/

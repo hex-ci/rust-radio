@@ -1,0 +1,28 @@
+[workspace]
+members = ["crates/rust-radio-core", "crates/rust-radio-audio", "crates/rust-radio-app"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Hex"]
+repository = "https://github.com/hex-ci/rust-radio"
+homepage = "https://github.com/hex-ci/rust-radio"
+rust-version = "1.87"
+
+[workspace.dependencies]
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+reqwest = { version = "0.13", features = ["blocking", "json", "gzip"] }
+md5 = "0.8"
+
+[profile.release]
+opt-level = 2
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
