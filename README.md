@@ -6,7 +6,7 @@
 ![CI](https://github.com/hex-ci/rust-radio/actions/workflows/ci.yml/badge.svg)
 ![Release](https://github.com/hex-ci/rust-radio/actions/workflows/release.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Rust](https://img.shields.io/badge/rust-1.87%2B-orange.svg)
+![Rust](https://img.shields.io/badge/rust-1.99.1%2B-orange.svg)
 
 > **非官方客户端。** 与中央广播电视总台、云听无任何关联，仅供学习与个人使用。
 > 音频与图文版权归原权利人所有；本程序不内置、不缓存、不分发任何音频内容。
@@ -65,7 +65,7 @@ macOS 包为 ad-hoc 签名、未做 Apple 公证，首次打开若提示“已�
 
 ## 快速开始
 
-需要 **Rust 1.87+**。解码器静态编进二进制；首次构建会编译随
+需要 **Rust 1.99.1+**。解码器静态编进二进制；首次构建会编译随
 `fdk-aac-sys` 附带的 libfdk-aac C++ 源码（macOS 上约 15 秒）。
 
 ```bash

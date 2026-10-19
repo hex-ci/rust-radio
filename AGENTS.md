@@ -16,7 +16,7 @@ docs/ARCHITECTURE.md      接口实测结论、六条硬规则、架构取舍—
 
 ## 环境
 
-- 稳定版 Rust，edition 2021；MSRV 1.87（symphonia 0.6 / rubato 0.16 的要求）。
+- 稳定版 Rust 1.99.1，edition 2021；MSRV 跟着提到 1.99.1（eframe 0.37 要 1.95、rubato 5 要 1.87，其余更低）。
 - AAC 由 `fdk-aac-sys` 静态编译 libfdk-aac（需要 C++ 工具链；Windows 用 MSVC，
   MinGW GCC 16 下 fdk-aac-sys 0.5.0 的 `fMax(SHORT, SHORT)` 重定义会编译失败），
   MP3/MP4 由 symphonia，HLS/ADTS/MPEG-TS 在 `rust-radio-audio` 内自行处理。
