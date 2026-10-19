@@ -76,4 +76,6 @@ macOS 通用包（`lipo` 双架构）/ Windows zip / Linux tar.gz，跑测试，
 - 应用图标由 `scripts/make-icon.swift` 生成；`crates/rust-radio-app/assets/app-icon-1024.png` 是运行时内嵌副本，改图标要同时重新生成这两处（`bash scripts/bundle-macos.sh` 只更新 `.app`）。
 - `--selftest` 会真的打开声卡并以 0.35 音量放音，失败返回非 0；`--audit` / `--check-live` 要开窗，不能当 CI 用。
 - GUI 模式阻塞到窗口关闭；自动化截图用上面的 `--view` / `--search` / `--size` 组合。
+- Windows release 构建带 `windows_subsystem = "windows"`（`main.rs` 首行），双击不会弹控制台；
+  代价是 release exe 里 `--selftest` / `--check-live` 的 stdout 看不到，要跑这类诊断用 `cargo run`（debug 仍带控制台）。
 - 仓库已有 `.git`；内部笔记/逆向资料放在 `.docs/`，整目录不入库。
