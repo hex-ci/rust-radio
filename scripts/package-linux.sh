@@ -36,6 +36,8 @@ mkdir -p "$STAGE"
 cp "target/release/$BIN" "$STAGE/$BIN"
 chmod 755 "$STAGE/$BIN"
 cp README.md LICENSE "$STAGE/"
+# 仓库里的 README/LICENSE 带 100755（Windows 上 add 的），包里统一成 644
+chmod 644 "$STAGE/README.md" "$STAGE/LICENSE"
 cp "$ICON" "$STAGE/rust-radio.png"
 
 cat > "$STAGE/rust-radio.desktop" <<'DESKTOP'
