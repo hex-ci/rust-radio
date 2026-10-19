@@ -72,6 +72,8 @@ macOS 通用包（`lipo` 双架构）/ Windows zip / Linux tar.gz，跑测试，
 - 代码已统一 `cargo fmt`；提交前跑 `cargo fmt --all --check`、`cargo clippy --workspace --all-targets -- -D warnings`。
 - 代码已清到 0 warning（egui 0.37 的 `Ui::scope_id` / `Id::unique` 已替换）。新增代码请保持无 warning。
 - 音频链路不要重新引入外部进程；`AdtsFramer::frames_from` 必须分块喂（一次 push 几十 KB 会触发内部截断，丢帧）。
+- rubato 已升到 5.x：缓冲走 `audioadapter` 适配器（`InterleavedSlice`），`SincFixedIn` / `Vec<Vec<f32>>` 那套旧 API 不存在了；
+  默认的 `fft_resampler` 特性是关的，只用异步 sinc。
 - 回听 CDN 对 HEAD 返回 `Content-Length: 0`，`mp4::probe_len` 会退到 Range 探测，别把 0 当有效长度。
 - 应用图标由 `scripts/make-icon.swift` 生成；`crates/rust-radio-app/assets/app-icon-1024.png` 是运行时内嵌副本，改图标要同时重新生成这两处（`bash scripts/bundle-macos.sh` 只更新 `.app`）。
 - `--selftest` 会真的打开声卡并以 0.35 音量放音，失败返回非 0；`--audit` / `--check-live` 要开窗，不能当 CI 用。
