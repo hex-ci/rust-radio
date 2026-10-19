@@ -183,6 +183,12 @@ fn pingfang() -> Option<std::path::PathBuf> {
     None
 }
 
+/// 非 macOS 平台不会走到这个分支，但 `cfg!` 是运行时判断，函数仍需存在。
+#[cfg(not(target_os = "macos"))]
+fn pingfang() -> Option<std::path::PathBuf> {
+    None
+}
+
 fn system_font_candidates() -> (
     Vec<FontChoice>,
     Vec<FontChoice>,
