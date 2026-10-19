@@ -9,7 +9,7 @@ license = "MIT"
 authors = ["Hex"]
 repository = "https://github.com/hex-ci/rust-radio"
 homepage = "https://github.com/hex-ci/rust-radio"
-rust-version = "1.87"
+rust-version = "1.99.1"
 
 [workspace.dependencies]
 anyhow = "1"

@@ -2,17 +2,21 @@
 //! 也可能不是双声道。这里用 rubato 的窗函数 sinc 重采样，
 //! 不做线性插值，避免高频损失。
 
+use rubato::audioadapter_buffers::direct::InterleavedSlice;
 use rubato::{
-    Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
+    Async, FixedAsync, Resampler, SincInterpolationParameters, SincInterpolationType,
+    WindowFunction,
 };
 
 const CHUNK: usize = 1024;
 
 pub struct StreamResampler {
-    inner: Option<SincFixedIn<f32>>,
+    inner: Option<Async<f32>>,
     in_ch: usize,
     out_ch: usize,
     pending: Vec<f32>,
+    /// 输出暂存（交错、`in_ch` 声道），每块复用，避免在播放线程里反复分配
+    scratch: Vec<f32>,
 }
 
 impl StreamResampler {
@@ -22,21 +26,26 @@ impl StreamResampler {
         let inner = if in_rate == out_rate {
             None
         } else {
-            let params = SincInterpolationParameters {
-                sinc_len: 256,
-                f_cutoff: 0.95,
-                interpolation: SincInterpolationType::Cubic,
-                oversampling_factor: 256,
-                window: WindowFunction::BlackmanHarris2,
-            };
-            SincFixedIn::<f32>::new(out_rate as f64 / in_rate as f64, 1.0, params, CHUNK, in_ch)
-                .ok()
+            let params = SincInterpolationParameters::new(256, WindowFunction::BlackmanHarris2)
+                .f_cutoff(0.95)
+                .oversampling_factor(256)
+                .interpolation(SincInterpolationType::Cubic);
+            Async::<f32>::new_sinc(
+                out_rate as f64 / in_rate as f64,
+                1.0,
+                &params,
+                CHUNK,
+                in_ch,
+                FixedAsync::Input,
+            )
+            .ok()
         };
         Self {
             inner,
             in_ch,
             out_ch,
             pending: Vec::with_capacity(CHUNK * in_ch * 2),
+            scratch: Vec::new(),
         }
     }
 
@@ -45,54 +54,50 @@ impl StreamResampler {
         if input.is_empty() {
             return;
         }
-        if self.inner.is_none() {
+        let Self {
+            inner,
+            in_ch,
+            out_ch,
+            pending,
+            scratch,
+        } = self;
+        let (in_ch, out_ch) = (*in_ch, *out_ch);
+        let Some(rs) = inner.as_mut() else {
             // 采样率相同：只做声道映射（直通或单声道→立体声）
-            if self.in_ch == self.out_ch {
+            if in_ch == out_ch {
                 out.extend_from_slice(input);
             } else {
-                for frame in input.chunks_exact(self.in_ch) {
-                    for c in 0..self.out_ch {
-                        out.push(frame[c.min(self.in_ch - 1)]);
+                for frame in input.chunks_exact(in_ch) {
+                    for c in 0..out_ch {
+                        out.push(frame[c.min(in_ch - 1)]);
                     }
                 }
             }
             return;
-        }
-        self.pending.extend_from_slice(input);
-        let need = CHUNK * self.in_ch;
-        while self.pending.len() >= need {
-            let mut planar: Vec<Vec<f32>> =
-                (0..self.in_ch).map(|_| Vec::with_capacity(CHUNK)).collect();
-            for frame in self.pending[..need].chunks_exact(self.in_ch) {
-                for (c, v) in frame.iter().enumerate() {
-                    planar[c].push(*v);
+        };
+        pending.extend_from_slice(input);
+        let need = CHUNK * in_ch;
+        while pending.len() >= need {
+            let out_frames = rs.output_frames_next();
+            scratch.resize(out_frames * in_ch, 0.0);
+            let produced = {
+                let (Ok(in_adapter), Ok(mut out_adapter)) = (
+                    InterleavedSlice::new(&pending[..need], in_ch, CHUNK),
+                    InterleavedSlice::new_mut(scratch, in_ch, out_frames),
+                ) else {
+                    pending.drain(..need);
+                    continue;
+                };
+                match rs.process_into_buffer(&in_adapter, &mut out_adapter, None) {
+                    Ok((_, nbr_out)) => nbr_out,
+                    // 理论上不会失败；这一块直接跳过，避免整条链路断掉
+                    Err(_) => 0,
                 }
-            }
-            self.pending.drain(..need);
-            match &mut self.inner {
-                Some(rs) => match rs.process(&planar, None) {
-                    Ok(res) => {
-                        let frames = res.first().map(|v| v.len()).unwrap_or(0);
-                        #[allow(clippy::needless_range_loop)] // 按帧号交织各声道，不能直接迭代替换
-                        for i in 0..frames {
-                            for c in 0..self.out_ch {
-                                out.push(res[c.min(self.in_ch - 1)][i]);
-                            }
-                        }
-                    }
-                    Err(_) => {
-                        // 理论上不会失败；这一块直接跳过，避免整条链路断掉
-                    }
-                },
-                None => {
-                    // 只做声道映射
-                    let frames = planar[0].len();
-                    #[allow(clippy::needless_range_loop)] // 同上：按帧号交织各声道
-                    for i in 0..frames {
-                        for c in 0..self.out_ch {
-                            out.push(planar[c.min(self.in_ch - 1)][i]);
-                        }
-                    }
+            };
+            pending.drain(..need);
+            for frame in scratch.chunks_exact(in_ch).take(produced) {
+                for c in 0..out_ch {
+                    out.push(frame[c.min(in_ch - 1)]);
                 }
             }
         }
