@@ -1,6 +1,6 @@
 //! 音频引擎：内置解码（libfdk-aac + symphonia）→ ringbuf → cpal。
 //!
-//! 不再依赖外部 ffmpeg 进程。三条播放路径：
+//! 三条播放路径：
 //! - HLS 直播：主线路 `.aac`（HE-AAC v2，ADTS），备用 `.ts`（AAC-LC，MPEG-TS）
 //! - 回听：`.m4a`（AAC-LC），HTTP Range + symphonia 解复用，可 seek
 //! - 直连 MP3：兜底分支，symphonia 解码

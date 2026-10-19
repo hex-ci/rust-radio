@@ -1,8 +1,7 @@
 # 云听电台
 
 用纯 Rust 编写的云听电台桌面客户端，支持 macOS / Windows / Linux。界面由 `egui` 自绘，
-音频在内置解码器（libfdk-aac + symphonia）中完成，`cpal` 直接输出——没有 WebView、没有外部
-`ffmpeg` 进程，单个二进制即可运行。
+音频在内置解码器（libfdk-aac + symphonia）中完成，`cpal` 直接输出，单个二进制即可运行。
 
 ![CI](https://github.com/hex-ci/rust-radio/actions/workflows/ci.yml/badge.svg)
 ![Release](https://github.com/hex-ci/rust-radio/actions/workflows/release.yml/badge.svg)
@@ -66,7 +65,7 @@ macOS 包为 ad-hoc 签名、未做 Apple 公证，首次打开若提示“已�
 
 ## 快速开始
 
-需要 **Rust 1.87+**。解码器静态编进二进制，**不需要安装 ffmpeg**；首次构建会编译随
+需要 **Rust 1.87+**。解码器静态编进二进制；首次构建会编译随
 `fdk-aac-sys` 附带的 libfdk-aac C++ 源码（macOS 上约 15 秒）。
 
 ```bash
@@ -170,9 +169,9 @@ cargo test --workspace
 ## 致谢
 
 - [egui / eframe](https://github.com/emilk/egui)
-- [libfdk-aac](https://github.com/mstorsjo/fdk-aac)（经 `fdk-aac-sys`）
+- [libfdk-aac](https://github.com/mstorsjo/fdk-aac)
 - [symphonia](https://github.com/pdeljanov/Symphonia)
-- [Phosphor Icons](https://phosphoricons.com/)（MIT，许可文本随字体放在 `crates/rust-radio-app/assets/phosphor/`）
+- [Phosphor Icons](https://phosphoricons.com/)
 
 ## 许可
 

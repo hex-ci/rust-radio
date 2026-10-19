@@ -1,4 +1,4 @@
-# rust-radio（云听电台）
+# 云听电台
 
 非官方云听电台桌面客户端。`rust-radio-core` 是签名 HTTP 客户端 + 磁盘缓存 + 电台目录索引，
 `rust-radio-audio` 用内置解码器（libfdk-aac + symphonia）解出 PCM，经重采样和 ringbuf 送进 cpal，
@@ -17,7 +17,7 @@ docs/ARCHITECTURE.md      接口实测结论、六条硬规则、架构取舍—
 ## 环境
 
 - 稳定版 Rust，edition 2021；MSRV 1.87（symphonia 0.6 / rubato 0.16 的要求）。
-- 不依赖 ffmpeg；AAC 由 `fdk-aac-sys` 静态编译 libfdk-aac（需要 C++ 工具链；Windows 用 MSVC，
+- AAC 由 `fdk-aac-sys` 静态编译 libfdk-aac（需要 C++ 工具链；Windows 用 MSVC，
   MinGW GCC 16 下 fdk-aac-sys 0.5.0 的 `fMax(SHORT, SHORT)` 重定义会编译失败），
   MP3/MP4 由 symphonia，HLS/ADTS/MPEG-TS 在 `rust-radio-audio` 内自行处理。
 - 运行数据（`store.json`、列表缓存、台标）写在平台数据目录；用 `RUST_RADIO_DATA_DIR=/tmp/...` 隔离测试，避免污染本机收藏与进度。
