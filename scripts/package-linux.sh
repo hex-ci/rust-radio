@@ -28,7 +28,7 @@ STAGE="$ROOT/dist/$NAME"
 OUT="$ROOT/dist/$NAME.tar.gz"
 
 echo "==> 检查产物 target/release/$BIN"
-[ -x "target/release/$BIN" ] || { echo "缺少 target/release/$BIN，先 cargo build --release -p rust-radio-app" >&2; exit 1; }
+[ -x "target/release/$BIN" ] || { echo "缺少 target/release/${BIN}，先 cargo build --release -p rust-radio-app" >&2; exit 1; }
 
 echo "==> 组装 $STAGE"
 rm -rf "$STAGE"

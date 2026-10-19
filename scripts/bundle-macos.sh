@@ -75,6 +75,6 @@ PLIST
 echo "==> ad-hoc 签名"
 codesign --force --sign - "$APP"
 
-echo "==> 完成：$APP（版本 $APP_VERSION）"
+echo "==> 完成：${APP}（版本 ${APP_VERSION}）"
 codesign -dv "$APP" 2>&1 | sed -n '1,4p'
 du -sh "$APP"
