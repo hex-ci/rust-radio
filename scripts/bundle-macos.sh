@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # 打包 macOS .app：cargo release 产物 + 图标 + Info.plist + ad-hoc 签名。
 # 用法：bash scripts/bundle-macos.sh
+#       APP_VERSION=0.2.0 bash scripts/bundle-macos.sh    # 指定版本（默认读 Cargo.toml）
+#       SKIP_BUILD=1 bash scripts/bundle-macos.sh         # 复用已有 target/release/rust-radio
+#                                                         # （CI 里先 lipo 出通用二进制再打包）
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -12,8 +15,22 @@ APP="$ROOT/dist/$APP_NAME.app"
 BUILD="$ROOT/target/bundle"
 ICONSET="$BUILD/AppIcon.iconset"
 
-echo "==> cargo build --release -p rust-radio-app"
-cargo build --release -p rust-radio-app
+APP_VERSION="${APP_VERSION:-}"
+if [ -z "$APP_VERSION" ]; then
+    APP_VERSION="$(sed -n '/^\[workspace\.package\]/,/^\[/s/^version *= *"\([^"]*\)".*/\1/p' Cargo.toml | head -n1)"
+fi
+[ -n "$APP_VERSION" ] || { echo "无法从 Cargo.toml 读取版本" >&2; exit 1; }
+# CFBundleVersion 只允许数字和点
+APP_BUILD_VERSION="$(printf '%s' "$APP_VERSION" | tr -cd '0-9.')"
+[ -n "$APP_BUILD_VERSION" ] || APP_BUILD_VERSION="1"
+
+if [ "${SKIP_BUILD:-0}" = "1" ]; then
+    echo "==> 跳过 cargo build（SKIP_BUILD=1）"
+    [ -f "target/release/$BIN" ] || { echo "缺少 target/release/$BIN" >&2; exit 1; }
+else
+    echo "==> cargo build --release -p rust-radio-app"
+    cargo build --release --locked -p rust-radio-app
+fi
 
 echo "==> 生成图标"
 rm -rf "$BUILD"
@@ -33,7 +50,7 @@ cp "$ROOT/target/release/$BIN" "$APP/Contents/MacOS/$BIN"
 cp "$BUILD/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -44,8 +61,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key><string>com.hex.rust-radio</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.1.0</string>
-    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleShortVersionString</key><string>${APP_VERSION}</string>
+    <key>CFBundleVersion</key><string>${APP_BUILD_VERSION}</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>LSMinimumSystemVersion</key><string>11.0</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.music</string>
@@ -58,6 +75,6 @@ PLIST
 echo "==> ad-hoc 签名"
 codesign --force --sign - "$APP"
 
-echo "==> 完成：$APP"
+echo "==> 完成：$APP（版本 $APP_VERSION）"
 codesign -dv "$APP" 2>&1 | sed -n '1,4p'
 du -sh "$APP"

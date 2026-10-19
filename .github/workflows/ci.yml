@@ -4,9 +4,17 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   check:
@@ -15,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
 
     steps:
       - uses: actions/checkout@v4
@@ -31,15 +39,41 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ci-${{ matrix.os }}
 
       - name: Format
         run: cargo fmt --all --check
 
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
       - name: Test
-        run: cargo test --workspace
+        run: cargo test --workspace --locked
 
-      - name: Build app
-        run: cargo build --release -p rust-radio-app
+      - name: Build app (release)
+        run: cargo build --release --locked -p rust-radio-app
+
+# 发版脚本别等到打 tag 才发现坏了：这里只打包、不发布。
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        env:
+          APP_VERSION: 0.0.0
+          SKIP_BUILD: "1"
+        run: |
+          bash scripts/bundle-macos.sh
+          codesign --verify --deep --strict "dist/云听电台.app"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "dist/云听电台.app/Contents/Info.plist"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          APP_VERSION: 0.0.0
+        run: pwsh -NoProfile -File scripts/package-windows.ps1
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        env:
+          APP_VERSION: 0.0.0
+        run: bash scripts/package-linux.sh

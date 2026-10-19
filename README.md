@@ -5,6 +5,7 @@
 `ffmpeg` 进程，单个二进制即可运行。
 
 ![CI](https://github.com/hex-ci/rust-radio/actions/workflows/ci.yml/badge.svg)
+![Release](https://github.com/hex-ci/rust-radio/actions/workflows/release.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Rust](https://img.shields.io/badge/rust-1.87%2B-orange.svg)
 
@@ -50,6 +51,19 @@
 - 迷你模式：420×132，右下角还原按钮、双击空白处或 Esc 回到完整界面。
 - 收藏、最近播放、回听进度与设置写在平台数据目录；收藏只存电台 ID，不存播放地址。
 
+## 下载
+
+从 [Releases](https://github.com/hex-ci/rust-radio/releases) 取最新版本，无需安装 Rust：
+
+| 平台 | 文件 | 内容 |
+|---|---|---|
+| macOS | `rust-radio_<版本>_macos_universal.zip` | 通用二进制（Apple Silicon / Intel），解压得 `云听电台.app` |
+| Windows | `rust-radio_<版本>_windows_x86_64.zip` | 解压即用，`rust-radio.exe` |
+| Linux | `rust-radio_<版本>_linux_x86_64.tar.gz` | 二进制 + 图标 + `.desktop` |
+
+macOS 包为 ad-hoc 签名、未做 Apple 公证，首次打开若提示“已损坏”，执行
+`xattr -dr com.apple.quarantine "/Applications/云听电台.app"`。
+
 ## 快速开始
 
 需要 **Rust 1.87+**。解码器静态编进二进制，**不需要安装 ffmpeg**；首次构建会编译随
@@ -68,7 +82,7 @@ cargo run -p rust-radio-app -- --view all         # 直接打开某个页面
 |---|---|
 | macOS | Xcode Command Line Tools（clang / libc++） |
 | Linux | `build-essential`、`pkg-config`、`libasound2-dev` |
-| Windows | MSVC C++ 工具链；或 GNU 工具链 + `gcc` / `g++`<br>`winget install BrechtSanders.WinLibs.POSIX.UCRT` |
+| Windows | MSVC C++ 工具链（推荐，CI 也用 MSVC） |
 
 ### 打包
 
@@ -76,11 +90,26 @@ cargo run -p rust-radio-app -- --view all         # 直接打开某个页面
 cargo build --release -p rust-radio-app
 # 产物：target/release/rust-radio（Windows 为 rust-radio.exe）
 
-bash scripts/bundle-macos.sh
-# 产物：dist/云听电台.app（图标 + Info.plist + ad-hoc 签名，可双击启动）
+bash scripts/bundle-macos.sh        # dist/云听电台.app（图标 + Info.plist + ad-hoc 签名）
+bash scripts/package-linux.sh       # dist/rust-radio_<版本>_linux_<架构>.tar.gz
+pwsh scripts/package-windows.ps1    # dist/rust-radio_<版本>_windows_x86_64.zip
 ```
 
+版本号取自 `Cargo.toml` 的 `[workspace.package] version`，可用 `APP_VERSION=x.y.z` 覆盖。
+
 `dist/` 与 `target/` 不入库。
+
+## 发版
+
+把 `[workspace.package] version` 改成目标版本并提交，然后推 tag：
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+`.github/workflows/release.yml` 会校验 tag 与 Cargo 版本一致，构建 macOS 通用包（`lipo` 双架构）、
+Windows x64 zip、Linux x64 tar.gz，跑 fmt/clippy/test，然后创建 GitHub Release 并附 `SHA256SUMS.txt`。
+也可在 Actions 页手动 dispatch（关掉发布开关则只保留 artifacts）。
 
 ## 自检
 

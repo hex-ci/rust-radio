@@ -1,0 +1,2 @@
+# 仓库主要在 Windows 上开发，shell 脚本必须保持 LF，否则 Linux / macOS 上解释器会读到 \r
+*.sh text eol=lf

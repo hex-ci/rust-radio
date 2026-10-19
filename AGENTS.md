@@ -17,7 +17,8 @@ docs/ARCHITECTURE.md      接口实测结论、六条硬规则、架构取舍—
 ## 环境
 
 - 稳定版 Rust，edition 2021；MSRV 1.87（symphonia 0.6 / rubato 0.16 的要求）。
-- 不依赖 ffmpeg；AAC 由 `fdk-aac-sys` 静态编译 libfdk-aac（需要 C++ 工具链，MSVC 或 g++），
+- 不依赖 ffmpeg；AAC 由 `fdk-aac-sys` 静态编译 libfdk-aac（需要 C++ 工具链；Windows 用 MSVC，
+  MinGW GCC 16 下 fdk-aac-sys 0.5.0 的 `fMax(SHORT, SHORT)` 重定义会编译失败），
   MP3/MP4 由 symphonia，HLS/ADTS/MPEG-TS 在 `rust-radio-audio` 内自行处理。
 - 运行数据（`store.json`、列表缓存、台标）写在平台数据目录；用 `RUST_RADIO_DATA_DIR=/tmp/...` 隔离测试，避免污染本机收藏与进度。
 
@@ -36,7 +37,11 @@ cargo build --release -p rust-radio-app     # 产物 target/release/rust-radio
 bash scripts/bundle-macos.sh                # 产物 dist/云听电台.app（图标 + ad-hoc 签名）
 ```
 
-GitHub Actions 跑 fmt / clippy / test（`.github/workflows/ci.yml`）。测试是模块内 `#[cfg(test)] mod tests`，不放 `tests/`。
+GitHub Actions：`.github/workflows/ci.yml` 在 macOS / Ubuntu / Windows 三平台跑 fmt / clippy / test 并对打包脚本做冒烟；
+`.github/workflows/release.yml` 负责发版——推 `v<版本>` tag（必须等于 `[workspace.package] version`）后构建
+macOS 通用包（`lipo` 双架构）/ Windows zip / Linux tar.gz，跑测试，创建 GitHub Release 并上传 `SHA256SUMS.txt`。
+手工打包脚本：`scripts/bundle-macos.sh`、`scripts/package-linux.sh`、`scripts/package-windows.ps1`。
+测试是模块内 `#[cfg(test)] mod tests`，不放 `tests/`。
 
 ## 约定
 

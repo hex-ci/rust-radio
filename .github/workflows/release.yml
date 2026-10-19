@@ -1,0 +1,295 @@
+name: Release
+
+# 发版：推送 v* tag 自动构建三平台产物并创建 GitHub Release。
+# 也可用 workflow_dispatch 手动跑（tag 必须已存在），发布开关可关掉只取 artifacts。
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "发布用的 tag（如 v0.1.0，需与 Cargo.toml 版本一致）"
+        required: true
+        type: string
+      draft:
+        description: "以草稿形式创建 Release"
+        required: false
+        type: boolean
+        default: false
+      publish:
+        description: "创建 / 更新 GitHub Release（关掉则只构建并保留 artifacts）"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  RUST_BACKTRACE: "1"
+
+jobs:
+  meta:
+    name: 版本校验
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 读取 workspace 版本并校验 tag
+        id: version
+        shell: bash
+        env:
+          REF_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="$(sed -n '/^\[workspace\.package\]/,/^\[/s/^version *= *"\([^"]*\)".*/\1/p' Cargo.toml | head -n1)"
+          if [ -z "$version" ]; then
+            echo "::error::无法从 Cargo.toml 的 [workspace.package] 读取 version"
+            exit 1
+          fi
+          if [ "${REF_TAG#v}" != "$version" ]; then
+            echo "::error::tag ${REF_TAG} 与 Cargo.toml 版本 ${version} 不一致：先改 workspace.package.version 再打 tag"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "发布版本 v$version"
+
+  checks:
+    name: fmt / clippy / test
+    runs-on: ubuntu-latest
+    needs: meta
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Linux 构建依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libasound2-dev libxkbcommon-dev libwayland-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-checks
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --locked
+
+  macos:
+    name: macOS 通用包
+    runs-on: macos-latest
+    needs: meta
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-macos
+
+      - name: 构建双架构并合成通用二进制
+        run: |
+          set -euo pipefail
+          cargo build --release --locked -p rust-radio-app --target aarch64-apple-darwin
+          cargo build --release --locked -p rust-radio-app --target x86_64-apple-darwin
+          mkdir -p target/release
+          lipo -create \
+            target/aarch64-apple-darwin/release/rust-radio \
+            target/x86_64-apple-darwin/release/rust-radio \
+            -output target/release/rust-radio
+          lipo -info target/release/rust-radio
+
+      - name: 打包 .app
+        env:
+          APP_VERSION: ${{ needs.meta.outputs.version }}
+          SKIP_BUILD: "1"
+        run: bash scripts/bundle-macos.sh
+
+      - name: 校验签名 / 架构 / 版本号
+        run: |
+          set -euo pipefail
+          APP="dist/云听电台.app"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          lipo -info "$APP/Contents/MacOS/rust-radio"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist"
+
+      - name: 压缩
+        run: |
+          set -euo pipefail
+          version="${{ needs.meta.outputs.version }}"
+          ditto -c -k --sequesterRsrc --keepParent "dist/云听电台.app" "dist/rust-radio_${version}_macos_universal.zip"
+          ls -lh dist/*.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-universal
+          path: dist/rust-radio_*_macos_universal.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  windows:
+    name: Windows x64 包
+    runs-on: windows-latest
+    needs: meta
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-windows
+
+      - name: 构建
+        run: cargo build --release --locked -p rust-radio-app
+
+      - name: 打包 zip
+        shell: pwsh
+        env:
+          APP_VERSION: ${{ needs.meta.outputs.version }}
+        run: pwsh -NoProfile -File scripts/package-windows.ps1
+
+      - name: 校验产物
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $zip = "dist/rust-radio_${{ needs.meta.outputs.version }}_windows_x86_64.zip"
+          if (-not (Test-Path $zip)) { throw "缺少 $zip" }
+          $exe = "dist/rust-radio_${{ needs.meta.outputs.version }}_windows_x86_64/rust-radio.exe"
+          $size = (Get-Item $exe).Length
+          if ($size -lt 1MB) { throw "rust-radio.exe 体积异常：$size 字节" }
+          Get-FileHash $zip -Algorithm SHA256 | Format-List
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86_64
+          path: dist/rust-radio_*_windows_x86_64.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  linux:
+    name: Linux x64 包
+    # 22.04 的 glibc 2.35 作为基线，比 ubuntu-latest（24.04 / glibc 2.39）兼容更老的发行版
+    runs-on: ubuntu-22.04
+    needs: meta
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装构建依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libasound2-dev libxkbcommon-dev libwayland-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-linux
+
+      - name: 构建
+        run: cargo build --release --locked -p rust-radio-app
+
+      - name: 打包 tar.gz
+        env:
+          APP_VERSION: ${{ needs.meta.outputs.version }}
+        run: bash scripts/package-linux.sh
+
+      - name: 校验产物
+        run: |
+          set -euo pipefail
+          bin="dist/rust-radio_${{ needs.meta.outputs.version }}_linux_x86_64/rust-radio"
+          file "$bin"
+          if ldd "$bin" | grep -q "not found"; then
+            ldd "$bin"
+            echo "::error::发布包存在缺失的动态库"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: dist/rust-radio_*_linux_x86_64.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: 发布 Release
+    runs-on: ubuntu-latest
+    needs: [meta, checks, macos, windows, linux]
+    if: ${{ github.event_name == 'push' || inputs.publish }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: 生成 SHA256SUMS
+        run: |
+          set -euo pipefail
+          cd artifacts
+          ls -lh
+          sha256sum ./* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: 生成发布说明
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+          TAG: ${{ needs.meta.outputs.tag }}
+        run: |
+          set -euo pipefail
+          sed "s|{{VERSION}}|${VERSION}|g" .github/release-notes.md > release-notes.md
+
+          echo "" >> release-notes.md
+          echo "## 本次变更" >> release-notes.md
+          echo "" >> release-notes.md
+          if prev="$(git describe --tags --abbrev=0 --match 'v*' "${TAG}^" 2>/dev/null)"; then
+            echo "自 ${prev} 起：" >> release-notes.md
+            echo "" >> release-notes.md
+            git log --no-merges --pretty=format:'- %s (%h)' "${prev}..${TAG}" >> release-notes.md
+          else
+            git log --no-merges --pretty=format:'- %s (%h)' "${TAG}" >> release-notes.md
+          fi
+          echo "" >> release-notes.md
+          sed -n '1,12p' release-notes.md
+
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.meta.outputs.tag }}
+          name: 云听电台 ${{ needs.meta.outputs.tag }}
+          body_path: release-notes.md
+          draft: ${{ inputs.draft || false }}
+          prerelease: ${{ contains(needs.meta.outputs.version, '-') }}
+          fail_on_unmatched_files: true
+          files: |
+            artifacts/*.zip
+            artifacts/*.tar.gz
+            artifacts/SHA256SUMS.txt
