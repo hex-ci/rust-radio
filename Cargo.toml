@@ -9,7 +9,9 @@ license = "MIT"
 authors = ["Hex"]
 repository = "https://github.com/hex-ci/rust-radio"
 homepage = "https://github.com/hex-ci/rust-radio"
-rust-version = "1.99.1"
+# MSRV = 依赖要求的下限（eframe 0.37 要 1.95），只在依赖抬高时才动。
+# 实际构建用的编译器版本锁在 rust-toolchain.toml，升级 Rust 只改那一处。
+rust-version = "1.95"
 
 [workspace.dependencies]
 anyhow = "1"

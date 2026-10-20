@@ -16,7 +16,8 @@ docs/ARCHITECTURE.md      接口实测结论、六条硬规则、架构取舍—
 
 ## 环境
 
-- 稳定版 Rust 1.99.1，edition 2021；MSRV 跟着提到 1.99.1（eframe 0.37 要 1.95、rubato 5 要 1.87，其余更低）。
+- edition 2021。两个版本概念分开：`rust-toolchain.toml` 的 `channel` 是**实际编译用的版本**（升级 Rust 只改这里）；
+  `Cargo.toml` 的 `rust-version` 是**依赖要求的下限**（当前 1.95，eframe 0.37 的要求），依赖不涨就不动。
 - AAC 由 `fdk-aac-sys` 静态编译 libfdk-aac（需要 C++ 工具链；Windows 用 MSVC，
   MinGW GCC 16 下 fdk-aac-sys 0.5.0 的 `fMax(SHORT, SHORT)` 重定义会编译失败），
   MP3/MP4 由 symphonia，HLS/ADTS/MPEG-TS 在 `rust-radio-audio` 内自行处理。
@@ -76,7 +77,8 @@ macOS 通用包（`lipo` 双架构）/ Windows zip / Linux tar.gz，跑测试，
   默认的 `fft_resampler` 特性是关的，只用异步 sinc。
 - 回听 CDN 对 HEAD 返回 `Content-Length: 0`，`mp4::probe_len` 会退到 Range 探测，别把 0 当有效长度。
 - 版本号只从 `[workspace.package] version` 取：代码里用 `env!("CARGO_PKG_VERSION")` 显示，打包脚本从 Cargo.toml 读；不要写死版本字符串。
-- 应用图标由 `scripts/make-icon.swift` 生成；`crates/rust-radio-app/assets/app-icon-1024.png` 是运行时内嵌副本，改图标要同时重新生成原始图与 `@2x` 副本；`cargo packager` 的 `icons` 指 `app-icon-1024.png`（文件名带 `@2x` 会让 Linux 图标目录变成 `1024x1024@2`，菜单里找不到图标）。
+- 应用图标由 `scripts/make-icon.swift` 生成；`crates/rust-radio-app/assets/app-icon-1024.png` 是运行时内嵌副本，改图标要同时重新生成原始图与 `@2x` 副本；`cargo packager` 的 `icons` 要同时给 `app-icon-1024@2x.png`（macOS icns 的 512@2x 槽，非 @2x 的 1024 图会报 `No matching IconType`）
+  和 `app-icon-512.png`（Linux 的 `hicolor/512x512`；@2x 那张会落成 `1024x1024@2`，主题扫不到）。
 - Windows 的 exe 图标/版本资源由 `crates/rust-radio-app/build.rs` 把 `assets/app.ico` 编进去（winit 只设 ICON_SMALL，
   窗口类 `hIcon: 0`，任务栏要靠 exe 里的图标资源）；改图标时跑 `python scripts/make-ico.py` 重新导出 `app.ico`（脚本只用标准库）。
 - `--selftest` 会真的打开声卡并以 0.35 音量放音，失败返回非 0；`--audit` / `--check-live` 要开窗，不能当 CI 用。
