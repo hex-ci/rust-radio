@@ -3681,20 +3681,20 @@ impl App {
                     .map(|n| n.line_label.clone())
                     .unwrap_or_default()
             );
-            widgets::live_dot(
-                &p,
-                Pos2::new(status_left + 3.0, cy - 13.0),
-                2.4,
-                self.start.elapsed().as_secs_f32(),
-                theme::ACCENT,
-            );
-            audit::text(
+            let live_rect = audit::text(
                 &p,
                 Pos2::new(status_left + 12.0, cy - 13.0),
                 Align2::LEFT_CENTER,
-                live,
+                &live,
                 theme::regular(10.0),
                 theme::DIM,
+            );
+            widgets::live_dot(
+                &p,
+                Pos2::new(status_left + 3.0, live_rect.center().y + 1.0),
+                2.4,
+                self.start.elapsed().as_secs_f32(),
+                theme::ACCENT,
             );
             let bar =
                 Rect::from_min_size(Pos2::new(status_left, cy + 4.0), Vec2::new(status_w, 3.0));
