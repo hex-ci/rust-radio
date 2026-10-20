@@ -43,7 +43,7 @@ info-plist-path = "../../packaging/macos/Info.plist"
 
 [package.metadata.packager.deb]
 package-name = "rust-radio"
-depends = ["libasound2", "libxkbcommon0", "libwayland-client0", "libgl1"]
+depends = ["libasound2 | libasound2t64", "libxkbcommon0", "libwayland-client0", "libgl1"]
 section = "sound"
 priority = "optional"
 desktop-template = "../../packaging/linux/rust-radio.desktop.hbs"
