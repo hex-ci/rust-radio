@@ -710,14 +710,17 @@ impl App {
                 Vec2::splat(18.0),
             );
             p.rect_filled(mark, CornerRadius::same(5), theme::ACCENT);
-            icons::draw(&p, mark.shrink(2.0), Icon::Radio, theme::ON_ACCENT, 13.0);
-            audit::text(
+            widgets::icon_label(
                 &p,
-                Pos2::new(mark.right() + 9.0, mark.center().y),
-                Align2::LEFT_CENTER,
+                mark.center().y,
+                Icon::Radio,
+                theme::ON_ACCENT,
                 "云听电台",
                 theme::bold(14.0),
                 theme::TEXT,
+                mark.center().x,
+                mark.right() + 9.0,
+                13.0,
             );
         }
         ui.add_space(12.0);
@@ -863,23 +866,17 @@ impl App {
                         );
                     }
                     let color = if in_region { theme::TEXT } else { theme::DIM };
-                    icons::draw(
+                    widgets::icon_label(
                         &p,
-                        Rect::from_center_size(
-                            Pos2::new(head.left() + 27.0, head.center().y),
-                            Vec2::splat(16.0),
-                        ),
+                        head.center().y,
                         Icon::MapPin,
                         color,
-                        17.0,
-                    );
-                    audit::text(
-                        &p,
-                        Pos2::new(head.left() + 45.0, head.center().y),
-                        Align2::LEFT_CENTER,
                         "按地区",
                         theme::regular(12.5),
                         color,
+                        head.left() + 27.0,
+                        head.left() + 45.0,
+                        17.0,
                     );
                     icons::draw(
                         &p,
@@ -981,20 +978,11 @@ impl App {
             );
         }
         let color = if active { theme::TEXT } else { theme::DIM };
-        icons::draw(
+        widgets::icon_label(
             ui.painter(),
-            Rect::from_center_size(
-                Pos2::new(rect.left() + 27.0, rect.center().y),
-                Vec2::splat(16.0),
-            ),
+            rect.center().y,
             icon,
             color,
-            17.0,
-        );
-        audit::text(
-            ui.painter(),
-            Pos2::new(rect.left() + 45.0, rect.center().y),
-            Align2::LEFT_CENTER,
             label,
             if active {
                 theme::bold(12.5)
@@ -1002,6 +990,9 @@ impl App {
                 theme::regular(12.5)
             },
             color,
+            rect.left() + 27.0,
+            rect.left() + 45.0,
+            17.0,
         );
         if !badge.is_empty() {
             audit::text(
@@ -2049,24 +2040,15 @@ impl App {
                 theme::ACCENT
             },
         );
-        icons::draw(
+        widgets::icon_label(
             &p,
-            Rect::from_center_size(
-                Pos2::new(play_rect.left() + 24.0, play_rect.center().y),
-                Vec2::splat(13.0),
-            ),
+            play_rect.center().y,
             if playing_this && snap.state == PlayState::Playing {
                 Icon::Pause
             } else {
                 Icon::Play
             },
             theme::ON_ACCENT,
-            13.0,
-        );
-        audit::text(
-            &p,
-            Pos2::new(play_rect.left() + 40.0, play_rect.center().y),
-            Align2::LEFT_CENTER,
             if playing_this {
                 "正在收听"
             } else {
@@ -2074,6 +2056,9 @@ impl App {
             },
             theme::bold(12.5),
             theme::ON_ACCENT,
+            play_rect.left() + 24.0,
+            play_rect.left() + 40.0,
+            13.0,
         );
         if presp.clicked() {
             if playing_this {
@@ -2199,23 +2184,17 @@ impl App {
             Stroke::new(1.0, theme::white_alpha(26)),
             StrokeKind::Inside,
         );
-        icons::draw(
+        widgets::icon_label(
             &p,
-            Rect::from_center_size(
-                Pos2::new(swap.left() + 16.0, swap.center().y),
-                Vec2::splat(11.0),
-            ),
+            swap.center().y,
             Icon::Refresh,
             theme::DIM,
-            12.0,
-        );
-        audit::text(
-            &p,
-            Pos2::new(swap.left() + 26.0, swap.center().y),
-            Align2::LEFT_CENTER,
             "换一个",
             theme::regular(10.5),
             theme::DIM,
+            swap.left() + 16.0,
+            swap.left() + 26.0,
+            12.0,
         );
         if sresp.clicked() && !self.national.is_empty() {
             let idx = (self.start.elapsed().as_millis() as usize / 7) % self.national.len();

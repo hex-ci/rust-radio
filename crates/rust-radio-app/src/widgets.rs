@@ -5,7 +5,55 @@ use egui::{
     Vec2,
 };
 
-use crate::theme;
+use crate::{audit, icons, icons::Icon, theme};
+
+/// galley 里字形实际墨迹的外框（相对 galley 原点）。
+///
+/// `epaint::RowVisuals::mesh_bounds` 不含首尾空白，正好是「字看起来占的地方」，
+/// 拿它做垂直居中比用行盒（ascent + descent）更接近视觉中心。
+pub fn ink_rect(galley: &egui::Galley) -> Rect {
+    let mut ink = Rect::NOTHING;
+    for placed in &galley.rows {
+        let bounds = placed.row.visuals.mesh_bounds;
+        if bounds.is_positive() {
+            ink = ink.union(bounds.translate(placed.pos.to_vec2()));
+        }
+    }
+    if ink.is_positive() {
+        ink
+    } else {
+        Rect::from_min_size(Pos2::ZERO, galley.size())
+    }
+}
+
+/// 「图标 + 文字」：两者都按各自的墨迹中心对齐到同一条水平中线。
+///
+/// 横向锚点（图标中心 x、文字左缘 x）由调用方给，保持各视图自己的视觉节奏；
+/// 垂直方向统一走这里，所以不会再出现「有的正好、有的偏 1px」。
+/// 图标与文字可以不同色（例如品牌方块里的图标是 ON_ACCENT、文字是正文色）。
+#[allow(clippy::too_many_arguments)]
+pub fn icon_label(
+    p: &Painter,
+    center_y: f32,
+    icon: Icon,
+    icon_color: Color32,
+    text: &str,
+    font: FontId,
+    text_color: Color32,
+    icon_cx: f32,
+    text_left: f32,
+    icon_size: f32,
+) -> Rect {
+    icons::draw_ink_centered(p, Pos2::new(icon_cx, center_y), icon, icon_color, icon_size);
+
+    let galley = p.layout_no_wrap(text.to_owned(), font, text_color);
+    let ink = ink_rect(&galley);
+    let pos = Pos2::new(text_left, center_y - ink.center().y);
+    let text_rect = Rect::from_min_size(pos, galley.size()).intersect(p.clip_rect());
+    p.galley(pos, galley, text_color);
+    audit::text_rect(text, text_rect);
+    text_rect
+}
 
 /// 单行截断：超出宽度时加省略号
 pub fn ellipsize(ctx: &egui::Context, s: &str, font: &FontId, max_w: f32) -> String {
@@ -171,4 +219,79 @@ pub fn fmt_time(secs: f64) -> String {
 pub fn fmt_clock(ts: &chrono::DateTime<chrono::Local>) -> String {
     use chrono::Timelike;
     format!("{:02}:{:02}", ts.hour(), ts.minute())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::icons::Icon;
+    use crate::theme;
+
+    /// 在无窗口的 Context 里排版一次，验证「图标 + 文字」的墨迹中心都落在中线
+    /// 上——这正是肉眼看到的 1px 偏移的量；顺带钉住它和行盒居中确实不是一个值。
+    #[test]
+    fn icon_label_centers_on_ink_not_line_box() {
+        let ctx = egui::Context::default();
+        theme::install_fonts(&ctx);
+        let mut checked = 0;
+
+        let mut output = ctx.run_pass(egui::RawInput::default(), |ctx| {
+            let p = ctx.layer_painter(egui::LayerId::background());
+            let cases: [(Icon, &str, f32, f32); 3] = [
+                (Icon::Play, "收听", 12.5, 13.0),
+                (Icon::Pause, "正在收听", 12.5, 13.0),
+                (Icon::Refresh, "换一个", 10.5, 12.0),
+            ];
+
+            for (icon, text, font_size, icon_size) in cases {
+                let rect = Rect::from_min_size(Pos2::new(10.0, 20.0), Vec2::new(160.0, 36.0));
+                let center_y = rect.center().y;
+
+                let text_rect = icon_label(
+                    &p,
+                    center_y,
+                    icon,
+                    theme::ON_ACCENT,
+                    text,
+                    theme::bold(font_size),
+                    theme::ON_ACCENT,
+                    rect.left() + 24.0,
+                    rect.left() + 40.0,
+                    icon_size,
+                );
+
+                let text_galley =
+                    p.layout_no_wrap(text.to_owned(), theme::bold(font_size), theme::ON_ACCENT);
+                let text_ink = ink_rect(&text_galley);
+                assert!(
+                    (text_rect.top() + text_ink.center().y - center_y).abs() < 0.01,
+                    "{text} 的墨迹中心没对齐：{} vs {center_y}",
+                    text_rect.top() + text_ink.center().y
+                );
+
+                // 同样的文字按行盒居中会偏多少：证明这不是 0 偏移的空操作
+                let line_box_offset =
+                    (text_rect.top() + text_galley.size().y * 0.5 - center_y).abs();
+                assert!(
+                    line_box_offset > 0.2,
+                    "{text} 行盒与墨迹中心恰好一致（{line_box_offset}），测试失去意义"
+                );
+
+                let (glyph, fill) = icon.glyph();
+                let icon_galley = p.layout_no_wrap(
+                    glyph.to_owned(),
+                    theme::icon_font(icon_size, fill),
+                    theme::ON_ACCENT,
+                );
+                let icon_ink = ink_rect(&icon_galley);
+                // 图标由 icon_label 内部绘制，这里只验证它用的墨迹框本身是贴合的
+                assert!(icon_ink.height() > 0.0, "图标墨迹框为空");
+                checked += 1;
+            }
+        });
+
+        // 测试里没有渲染器消费纹理增量，丢弃前必须 clear，否则 epaint 会 panic
+        output.textures_delta.clear();
+        assert_eq!(checked, 3);
+    }
 }

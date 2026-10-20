@@ -3,7 +3,7 @@
 //! 字体来自 egui-phosphor 的资源包；常量取上游 `regular.rs` / `fill.rs` 的码点。
 //! 想换图标时改这里的一行即可，其余 UI 代码只认 `Icon` 枚举。
 
-use egui::{Color32, Painter, Rect};
+use egui::{Color32, Painter, Pos2, Rect};
 
 use crate::theme;
 
@@ -46,7 +46,7 @@ pub enum Icon {
 
 impl Icon {
     /// (Phosphor 码点, 是否用实心字重)
-    fn glyph(self) -> (&'static str, bool) {
+    pub(crate) fn glyph(self) -> (&'static str, bool) {
         match self {
             // 媒体控制用实心，视觉更稳
             Icon::Play => ("\u{E3D0}", true),          // PLAY
@@ -101,6 +101,24 @@ pub fn draw(p: &Painter, rect: Rect, icon: Icon, color: Color32, size: f32) {
         theme::icon_font(size, fill),
         color,
     );
+}
+
+/// 按字形「墨迹」的中心绘制，和文字用同一套光学居中规则。
+///
+/// `draw()` 用的是 `Align2::CENTER_CENTER`，对齐的是 galley 的行盒
+/// （ascent + descent + leading），而 CJK 文字和图标字体的行盒留白并不相同，
+/// 于是「图标 + 文字」这种组合有的看着正好、有的偏一两像素。
+/// 这里改成先排版、再取 `RowVisuals::mesh_bounds`（真实墨迹）反推落点。
+pub fn draw_ink_centered(p: &Painter, center: Pos2, icon: Icon, color: Color32, size: f32) {
+    if std::env::var_os("RUST_RADIO_NOICONS").is_some() {
+        return;
+    }
+    let (glyph, fill) = icon.glyph();
+    let font = theme::icon_font(size.max(6.0), fill);
+    let galley = p.layout_no_wrap(glyph.to_owned(), font, color);
+    let ink = crate::widgets::ink_rect(&galley);
+    let pos = Pos2::new(center.x - ink.center().x, center.y - ink.center().y);
+    p.galley(pos, galley, color);
 }
 
 /// 所有图标的清单（图标检查窗用）

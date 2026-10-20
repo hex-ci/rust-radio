@@ -103,18 +103,22 @@ pub fn text(
     let text = text.to_string();
     let rect = p.text(pos, anchor, text.clone(), font, color);
     let rect = rect.intersect(p.clip_rect());
-    let visible = rect.is_positive();
-    if is_enabled() && visible && !text.trim().is_empty() {
+    text_rect(&text, rect);
+    rect
+}
+
+/// 登记一段自己排版、自己 `painter.galley(...)` 画出来的文字。
+pub fn text_rect(text: &str, rect: Rect) {
+    if is_enabled() && rect.is_positive() && !text.trim().is_empty() {
         ITEMS.with(|i| {
             i.borrow_mut().push(Item {
-                name: format!("文本「{}」", truncate(&text, 14)),
+                name: format!("文本「{}」", truncate(text, 14)),
                 rect,
                 kind: Kind::Text,
                 view: current_view(),
             })
         });
     }
-    rect
 }
 
 fn truncate(s: &str, n: usize) -> String {
