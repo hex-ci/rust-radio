@@ -105,7 +105,7 @@ cargo packager -p rust-radio-app --release --formats deb,appimage
 
 # Linux（RPM，cargo-packager 暂不支持，用 cargo-generate-rpm）
 cargo install cargo-generate-rpm --locked
-cargo generate-rpm -p crates/rust-radio-app --auto-req builtin
+cargo generate-rpm -p crates/rust-radio-app --auto-req builtin -o dist/
 ```
 
 产物在 `dist/`。版本号取自 `Cargo.toml` 的 `[workspace.package] version`。
