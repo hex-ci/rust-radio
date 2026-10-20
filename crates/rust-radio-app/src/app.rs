@@ -3749,7 +3749,8 @@ impl App {
             pill_font.clone(),
             theme::DIM,
         );
-        q_resp.context_menu(|ui| {
+        let q_resp = q_resp.on_hover_text("点击切换音质");
+        egui::Popup::menu(&q_resp).show(|ui| {
             ui.set_min_width(150.0);
             if ui
                 .selectable_label(self.store.quality_high, "高清（AAC 132k+）")
@@ -3795,7 +3796,8 @@ impl App {
             pill_font.clone(),
             theme::DIM,
         );
-        l_resp.context_menu(|ui| {
+        let l_resp = l_resp.on_hover_text("点击查看线路选择规则");
+        egui::Popup::menu(&l_resp).show(|ui| {
             ui.set_min_width(170.0);
             ui.label(
                 RichText::new("线路由播放器自动选择：")
@@ -3854,8 +3856,7 @@ impl App {
             },
         );
         let sresp = sresp.on_hover_text("点击设置睡眠定时");
-        let sleep_toggle =
-            (sresp.clicked() || sresp.secondary_clicked()).then_some(egui::SetOpenCommand::Toggle);
+        let sleep_toggle = sresp.clicked().then_some(egui::SetOpenCommand::Toggle);
         egui::Popup::menu(&sresp)
             .open_memory(sleep_toggle)
             .show(|ui| {
