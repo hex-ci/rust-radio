@@ -1648,7 +1648,7 @@ impl App {
         widgets::fade_mask(
             &p,
             Rect::from_min_size(area.min, Vec2::new(area.width(), 14.0)),
-            false,
+            true,
             theme::BG,
         );
     }
