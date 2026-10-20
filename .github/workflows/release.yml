@@ -1,6 +1,6 @@
 name: Release
 
-# 发版：推送 v* tag 自动构建三平台产物并创建 GitHub Release。
+# 发版：推送 v* tag 自动构建三平台安装包并创建 GitHub Release。
 # 也可用 workflow_dispatch 手动跑（tag 必须已存在），发布开关可关掉只取 artifacts。
 
 on:
@@ -95,7 +95,7 @@ jobs:
         run: cargo test --workspace --locked
 
   macos:
-    name: macOS 通用包
+    name: macOS DMG（通用二进制）
     runs-on: macos-latest
     needs: meta
     steps:
@@ -109,6 +109,9 @@ jobs:
         with:
           key: release-macos
 
+      - name: 安装 cargo-packager
+        run: cargo install cargo-packager --locked
+
       - name: 构建双架构并合成通用二进制
         run: |
           set -euo pipefail
@@ -121,36 +124,33 @@ jobs:
             -output target/release/rust-radio
           lipo -info target/release/rust-radio
 
-      - name: 打包 .app
-        env:
-          APP_VERSION: ${{ needs.meta.outputs.version }}
-          SKIP_BUILD: "1"
-        run: bash scripts/bundle-macos.sh
+      - name: 打包 DMG
+        run: cargo packager -p rust-radio-app --release --formats dmg --target universal-apple-darwin
 
-      - name: 校验签名 / 架构 / 版本号
+      - name: 校验 DMG 内容
         run: |
           set -euo pipefail
-          APP="dist/云听电台.app"
-          codesign --verify --deep --strict --verbose=2 "$APP"
-          lipo -info "$APP/Contents/MacOS/rust-radio"
-          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist"
-
-      - name: 压缩
-        run: |
-          set -euo pipefail
-          version="${{ needs.meta.outputs.version }}"
-          ditto -c -k --sequesterRsrc --keepParent "dist/云听电台.app" "dist/rust-radio_${version}_macos_universal.zip"
-          ls -lh dist/*.zip
+          dmg="$(ls dist/*_universal.dmg)"
+          mnt="$(mktemp -d)"
+          hdiutil attach -nobrowse -readonly "$dmg" -mountpoint "$mnt"
+          app="$mnt/云听电台.app"
+          test -d "$app"
+          lipo -info "$app/Contents/MacOS/rust-radio"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" = "${{ needs.meta.outputs.version }}"
+          hdiutil detach "$mnt"
+          mv "$dmg" "dist/rust-radio_${{ needs.meta.outputs.version }}_macos_universal.dmg"
+          ls -lh dist/*.dmg
 
       - uses: actions/upload-artifact@v4
         with:
           name: macos-universal
-          path: dist/rust-radio_*_macos_universal.zip
+          path: dist/rust-radio_*_macos_universal.dmg
           if-no-files-found: error
           retention-days: 7
 
   windows:
-    name: Windows x64 包
+    name: Windows 安装包
     runs-on: windows-latest
     needs: meta
     steps:
@@ -162,35 +162,36 @@ jobs:
         with:
           key: release-windows
 
+      - name: 安装 cargo-packager
+        run: cargo install cargo-packager --locked
+
       - name: 构建
         run: cargo build --release --locked -p rust-radio-app
 
-      - name: 打包 zip
-        shell: pwsh
-        env:
-          APP_VERSION: ${{ needs.meta.outputs.version }}
-        run: pwsh -NoProfile -File scripts/package-windows.ps1
+      - name: 打包 NSIS 安装器
+        run: cargo packager -p rust-radio-app --release --formats nsis
 
-      - name: 校验产物
+      - name: 校验并重命名
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $zip = "dist/rust-radio_${{ needs.meta.outputs.version }}_windows_x86_64.zip"
-          if (-not (Test-Path $zip)) { throw "缺少 $zip" }
-          $exe = "dist/rust-radio_${{ needs.meta.outputs.version }}_windows_x86_64/rust-radio.exe"
-          $size = (Get-Item $exe).Length
-          if ($size -lt 1MB) { throw "rust-radio.exe 体积异常：$size 字节" }
-          Get-FileHash $zip -Algorithm SHA256 | Format-List
+          $installer = Get-ChildItem dist/*-setup.exe | Select-Object -First 1
+          if (-not $installer) { throw "没有生成 NSIS 安装包" }
+          if ($installer.Length -lt 1MB) { throw "安装包体积异常：$($installer.Length) 字节" }
+          $target = "dist/rust-radio_${{ needs.meta.outputs.version }}_windows_x64_setup.exe"
+          Move-Item $installer.FullName $target
+          Get-FileHash $target -Algorithm SHA256 | Format-List
+          Get-ChildItem dist | Format-Table Name, Length
 
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-x86_64
-          path: dist/rust-radio_*_windows_x86_64.zip
+          name: windows-x64
+          path: dist/rust-radio_*_windows_x64_setup.exe
           if-no-files-found: error
           retention-days: 7
 
   linux:
-    name: Linux x64 包
+    name: Linux deb + AppImage
     # 22.04 的 glibc 2.35 作为基线，比 ubuntu-latest（24.04 / glibc 2.39）兼容更老的发行版
     runs-on: ubuntu-22.04
     needs: meta
@@ -208,29 +209,36 @@ jobs:
         with:
           key: release-linux
 
+      - name: 安装 cargo-packager
+        run: cargo install cargo-packager --locked
+
       - name: 构建
         run: cargo build --release --locked -p rust-radio-app
 
-      - name: 打包 tar.gz
+      - name: 打包 deb 与 AppImage
         env:
-          APP_VERSION: ${{ needs.meta.outputs.version }}
-        run: bash scripts/package-linux.sh
+          NO_STRIP: "1"
+        run: cargo packager -p rust-radio-app --release --formats deb,appimage
 
       - name: 校验产物
         run: |
           set -euo pipefail
-          bin="dist/rust-radio_${{ needs.meta.outputs.version }}_linux_x86_64/rust-radio"
-          file "$bin"
-          if ldd "$bin" | grep -q "not found"; then
-            ldd "$bin"
-            echo "::error::发布包存在缺失的动态库"
-            exit 1
-          fi
+          deb="$(ls dist/*.deb)"
+          appimage="$(ls dist/*.AppImage)"
+          dpkg-deb -I "$deb"
+          dpkg-deb -c "$deb" | grep -E "usr/bin/rust-radio|applications/rust-radio.desktop"
+          test -x "$appimage"
+          file "$appimage"
+          mv "$deb" "dist/rust-radio_${{ needs.meta.outputs.version }}_linux_amd64.deb"
+          mv "$appimage" "dist/rust-radio_${{ needs.meta.outputs.version }}_linux_amd64.AppImage"
+          ls -lh dist/*.deb dist/*.AppImage
 
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-x86_64
-          path: dist/rust-radio_*_linux_x86_64.tar.gz
+          name: linux-x64
+          path: |
+            dist/rust-radio_*_linux_amd64.deb
+            dist/rust-radio_*_linux_amd64.AppImage
           if-no-files-found: error
           retention-days: 7
 
@@ -290,6 +298,8 @@ jobs:
           prerelease: ${{ contains(needs.meta.outputs.version, '-') }}
           fail_on_unmatched_files: true
           files: |
-            artifacts/*.zip
-            artifacts/*.tar.gz
+            artifacts/*.dmg
+            artifacts/*_windows_x64_setup.exe
+            artifacts/*.deb
+            artifacts/*.AppImage
             artifacts/SHA256SUMS.txt

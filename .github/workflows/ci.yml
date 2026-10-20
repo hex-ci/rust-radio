@@ -54,26 +54,34 @@ jobs:
       - name: Build app (release)
         run: cargo build --release --locked -p rust-radio-app
 
+      - name: Install cargo-packager
+        run: cargo install cargo-packager --locked
+
 # 发版脚本别等到打 tag 才发现坏了：这里只打包、不发布。
       - name: Package (macOS)
         if: runner.os == 'macOS'
-        env:
-          APP_VERSION: 0.0.0
-          SKIP_BUILD: "1"
         run: |
-          bash scripts/bundle-macos.sh
-          codesign --verify --deep --strict "dist/云听电台.app"
-          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "dist/云听电台.app/Contents/Info.plist"
+          set -euo pipefail
+          cargo packager -p rust-radio-app --release --formats dmg
+          dmg="$(ls dist/*.dmg)"
+          mnt="$(mktemp -d)"
+          hdiutil attach -nobrowse -readonly "$dmg" -mountpoint "$mnt"
+          codesign --verify --deep --strict "$mnt/云听电台.app"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$mnt/云听电台.app/Contents/Info.plist"
+          hdiutil detach "$mnt"
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        env:
-          APP_VERSION: 0.0.0
-        run: pwsh -NoProfile -File scripts/package-windows.ps1
+        run: |
+          $ErrorActionPreference = "Stop"
+          cargo packager -p rust-radio-app --release --formats nsis
+          if (-not (Get-ChildItem dist/*-setup.exe)) { throw "没有生成 NSIS 安装包" }
 
       - name: Package (Linux)
         if: runner.os == 'Linux'
-        env:
-          APP_VERSION: 0.0.0
-        run: bash scripts/package-linux.sh
+        run: |
+          set -euo pipefail
+          cargo packager -p rust-radio-app --release --formats deb,appimage
+          dpkg-deb -I "$(ls dist/*.deb)"
+          test -x "$(ls dist/*.AppImage)"

@@ -25,3 +25,30 @@ path = "src/main.rs"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2"
+
+[package.metadata.packager]
+product-name = "云听电台"
+identifier = "com.hex.rust-radio"
+description = "非官方云听电台桌面客户端"
+category = "Music"
+out-dir = "../../dist"
+icons = ["assets/app-icon-1024@2x.png"]
+binaries-dir = "../../target/release"
+binaries = [{ path = "rust-radio", main = true }]
+
+[package.metadata.packager.macos]
+minimum-system-version = "11.0"
+signing-identity = "-"
+info-plist-path = "../../packaging/macos/Info.plist"
+
+[package.metadata.packager.deb]
+package-name = "rust-radio"
+depends = ["libasound2", "libxkbcommon0", "libwayland-client0", "libgl1"]
+section = "sound"
+priority = "optional"
+desktop-template = "../../packaging/linux/rust-radio.desktop.hbs"
+
+[package.metadata.packager.nsis]
+languages = ["SimpChinese", "English"]
+installer-mode = "currentUser"
+appdata-paths = ["$LOCALAPPDATA\\rust-radio"]

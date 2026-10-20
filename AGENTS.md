@@ -34,13 +34,13 @@ cargo run -p rust-radio-app -- --check-live --station 639  # 回听→回直播�
 cargo run -p rust-radio-app -- --audit      # 轮换 7 个页面查控件重叠，约 40s 后自动退出
 cargo run -p rust-radio-audio --example check -- 639   # 单台播放链路，8s 后 PASS/FAIL
 cargo build --release -p rust-radio-app     # 产物 target/release/rust-radio
-bash scripts/bundle-macos.sh                # 产物 dist/云听电台.app（图标 + ad-hoc 签名）
+cargo packager -p rust-radio-app --release --formats app,dmg   # 产物 dist/（需 cargo install cargo-packager）
 ```
 
 GitHub Actions：`.github/workflows/ci.yml` 在 macOS / Ubuntu / Windows 三平台跑 fmt / clippy / test 并对打包脚本做冒烟；
 `.github/workflows/release.yml` 负责发版——推 `v<版本>` tag（必须等于 `[workspace.package] version`）后构建
 macOS 通用包（`lipo` 双架构）/ Windows zip / Linux tar.gz，跑测试，创建 GitHub Release 并上传 `SHA256SUMS.txt`。
-手工打包脚本：`scripts/bundle-macos.sh`、`scripts/package-linux.sh`、`scripts/package-windows.ps1`。
+安装包由 cargo-packager 生成，配置在 `crates/rust-radio-app/Cargo.toml` 的 `[package.metadata.packager]`。
 测试是模块内 `#[cfg(test)] mod tests`，不放 `tests/`。
 
 ## 约定
@@ -76,7 +76,7 @@ macOS 通用包（`lipo` 双架构）/ Windows zip / Linux tar.gz，跑测试，
   默认的 `fft_resampler` 特性是关的，只用异步 sinc。
 - 回听 CDN 对 HEAD 返回 `Content-Length: 0`，`mp4::probe_len` 会退到 Range 探测，别把 0 当有效长度。
 - 版本号只从 `[workspace.package] version` 取：代码里用 `env!("CARGO_PKG_VERSION")` 显示，打包脚本从 Cargo.toml 读；不要写死版本字符串。
-- 应用图标由 `scripts/make-icon.swift` 生成；`crates/rust-radio-app/assets/app-icon-1024.png` 是运行时内嵌副本，改图标要同时重新生成这两处（`bash scripts/bundle-macos.sh` 只更新 `.app`）。
+- 应用图标由 `scripts/make-icon.swift` 生成；`crates/rust-radio-app/assets/app-icon-1024.png` 是运行时内嵌副本，改图标要同时重新生成原始图与 `@2x` 副本（`cargo packager` 用 `@2x` 那张生成 icns）。
 - `--selftest` 会真的打开声卡并以 0.35 音量放音，失败返回非 0；`--audit` / `--check-live` 要开窗，不能当 CI 用。
 - GUI 模式阻塞到窗口关闭；自动化截图用上面的 `--view` / `--search` / `--size` 组合。
 - Windows release 构建带 `windows_subsystem = "windows"`（`main.rs` 首行），双击不会弹控制台；

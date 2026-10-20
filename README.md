@@ -54,11 +54,12 @@
 
 从 [Releases](https://github.com/hex-ci/rust-radio/releases) 取最新版本，无需安装 Rust：
 
-| 平台 | 文件 | 内容 |
+| 平台 | 文件 | 安装方式 |
 |---|---|---|
-| macOS | `rust-radio_<版本>_macos_universal.zip` | 通用二进制（Apple Silicon / Intel），解压得 `云听电台.app` |
-| Windows | `rust-radio_<版本>_windows_x86_64.zip` | 解压即用，`rust-radio.exe` |
-| Linux | `rust-radio_<版本>_linux_x86_64.tar.gz` | 二进制 + 图标 + `.desktop` |
+| macOS | `rust-radio_<版本>_macos_universal.dmg` | 通用二进制（Apple Silicon / Intel），打开后把「云听电台」拖进 Applications |
+| Windows | `rust-radio_<版本>_windows_x64_setup.exe` | NSIS 安装器，双击安装 |
+| Linux | `rust-radio_<版本>_linux_amd64.deb` | Debian / Ubuntu：`sudo apt install ./rust-radio_*.deb` |
+| Linux | `rust-radio_<版本>_linux_amd64.AppImage` | 免安装：`chmod +x` 后直接运行 |
 
 macOS 包为 ad-hoc 签名、未做 Apple 公证，首次打开若提示“已损坏”，执行
 `xattr -dr com.apple.quarantine "/Applications/云听电台.app"`。
@@ -85,16 +86,24 @@ cargo run -p rust-radio-app -- --view all         # 直接打开某个页面
 
 ### 打包
 
-```bash
-cargo build --release -p rust-radio-app
-# 产物：target/release/rust-radio（Windows 为 rust-radio.exe）
+安装包统一用 [cargo-packager](https://github.com/crabnebula-dev/cargo-packager) 生成
+（配置在 `crates/rust-radio-app/Cargo.toml` 的 `[package.metadata.packager]`）：
 
-bash scripts/bundle-macos.sh        # dist/云听电台.app（图标 + Info.plist + ad-hoc 签名）
-bash scripts/package-linux.sh       # dist/rust-radio_<版本>_linux_<架构>.tar.gz
-pwsh scripts/package-windows.ps1    # dist/rust-radio_<版本>_windows_x86_64.zip
+```bash
+cargo install cargo-packager --locked
+cargo build --release -p rust-radio-app
+
+# macOS（.app / .dmg）
+cargo packager -p rust-radio-app --release --formats dmg
+
+# Windows（NSIS 安装器）
+cargo packager -p rust-radio-app --release --formats nsis
+
+# Linux（.deb / AppImage）
+cargo packager -p rust-radio-app --release --formats deb,appimage
 ```
 
-版本号取自 `Cargo.toml` 的 `[workspace.package] version`，可用 `APP_VERSION=x.y.z` 覆盖。
+产物在 `dist/`。版本号取自 `Cargo.toml` 的 `[workspace.package] version`。
 
 `dist/` 与 `target/` 不入库。
 
@@ -106,8 +115,9 @@ pwsh scripts/package-windows.ps1    # dist/rust-radio_<版本>_windows_x86_64.zi
 git tag v0.1.0 && git push origin v0.1.0
 ```
 
-`.github/workflows/release.yml` 会校验 tag 与 Cargo 版本一致，构建 macOS 通用包（`lipo` 双架构）、
-Windows x64 zip、Linux x64 tar.gz，跑 fmt/clippy/test，然后创建 GitHub Release 并附 `SHA256SUMS.txt`。
+`.github/workflows/release.yml` 会校验 tag 与 Cargo 版本一致，跑 fmt/clippy/test，
+然后构建 macOS 通用 DMG（`lipo` 双架构）、Windows NSIS 安装器、Linux deb + AppImage，
+创建 GitHub Release 并附 `SHA256SUMS.txt`。
 也可在 Actions 页手动 dispatch（关掉发布开关则只保留 artifacts）。
 
 ## 自检
