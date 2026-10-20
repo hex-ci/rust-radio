@@ -231,7 +231,7 @@ jobs:
 
       - name: 校验产物
         run: |
-          set -euo pipefail
+          set -euxo pipefail
           sudo apt-get install -y rpm
           deb="$(ls dist/*.deb)"
           appimage="$(ls dist/*.AppImage)"
@@ -243,9 +243,9 @@ jobs:
           rpm -qpi "$rpmfile"
           rpm -qp --requires "$rpmfile"
           rpm2cpio "$rpmfile" | cpio -t | grep -E "usr/bin/rust-radio|applications/rust-radio.desktop"
-          mv "$deb" "dist/rust-radio_${{ needs.meta.outputs.version }}_linux_amd64.deb"
-          mv "$appimage" "dist/rust-radio_${{ needs.meta.outputs.version }}_linux_amd64.AppImage"
-          ls -lh dist/*.deb dist/*.AppImage dist/*.rpm
+          mv -f "$deb" "dist/rust-radio_${{ needs.meta.outputs.version }}_linux_amd64.deb"
+          mv -f "$appimage" "dist/rust-radio_${{ needs.meta.outputs.version }}_linux_amd64.AppImage"
+          ls -lh dist/
 
       - uses: actions/upload-artifact@v4
         with:
