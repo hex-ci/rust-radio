@@ -52,3 +52,11 @@ desktop-template = "../../packaging/linux/rust-radio.desktop.hbs"
 languages = ["SimpChinese", "English"]
 installer-mode = "currentUser"
 appdata-paths = ["$LOCALAPPDATA\\rust-radio"]
+
+[package.metadata.generate-rpm]
+name = "rust-radio"
+assets = [
+    { source = "target/release/rust-radio", dest = "/usr/bin/rust-radio", mode = "755" },
+    { source = "packaging/linux/rust-radio.desktop", dest = "/usr/share/applications/rust-radio.desktop", mode = "644" },
+    { source = "crates/rust-radio-app/assets/app-icon-1024.png", dest = "/usr/share/icons/hicolor/1024x1024/apps/rust-radio.png", mode = "644" },
+]

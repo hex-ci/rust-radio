@@ -82,6 +82,9 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           set -euo pipefail
+          cargo install cargo-generate-rpm --locked
           cargo packager -p rust-radio-app --release --formats deb,appimage
+          cargo generate-rpm -p crates/rust-radio-app --auto-req builtin -o dist/
           dpkg-deb -I "$(ls dist/*.deb)"
           test -x "$(ls dist/*.AppImage)"
+          test -s "$(ls dist/*.rpm)"

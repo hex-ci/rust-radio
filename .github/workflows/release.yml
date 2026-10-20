@@ -215,23 +215,37 @@ jobs:
       - name: 构建
         run: cargo build --release --locked -p rust-radio-app
 
+      - name: 安装 cargo-generate-rpm
+        run: cargo install cargo-generate-rpm --locked
+
       - name: 打包 deb 与 AppImage
         env:
           NO_STRIP: "1"
         run: cargo packager -p rust-radio-app --release --formats deb,appimage
 
+      - name: 生成 RPM
+        run: |
+          set -euo pipefail
+          cargo generate-rpm -p crates/rust-radio-app --auto-req builtin \
+            -o "dist/rust-radio_${{ needs.meta.outputs.version }}_linux_amd64.rpm"
+
       - name: 校验产物
         run: |
           set -euo pipefail
+          sudo apt-get install -y rpm
           deb="$(ls dist/*.deb)"
           appimage="$(ls dist/*.AppImage)"
+          rpmfile="$(ls dist/*.rpm)"
           dpkg-deb -I "$deb"
           dpkg-deb -c "$deb" | grep -E "usr/bin/rust-radio|applications/rust-radio.desktop"
           test -x "$appimage"
           file "$appimage"
+          rpm -qpi "$rpmfile"
+          rpm -qp --requires "$rpmfile"
+          rpm2cpio "$rpmfile" | cpio -t | grep -E "usr/bin/rust-radio|applications/rust-radio.desktop"
           mv "$deb" "dist/rust-radio_${{ needs.meta.outputs.version }}_linux_amd64.deb"
           mv "$appimage" "dist/rust-radio_${{ needs.meta.outputs.version }}_linux_amd64.AppImage"
-          ls -lh dist/*.deb dist/*.AppImage
+          ls -lh dist/*.deb dist/*.AppImage dist/*.rpm
 
       - uses: actions/upload-artifact@v4
         with:
@@ -239,6 +253,7 @@ jobs:
           path: |
             dist/rust-radio_*_linux_amd64.deb
             dist/rust-radio_*_linux_amd64.AppImage
+            dist/rust-radio_*_linux_amd64.rpm
           if-no-files-found: error
           retention-days: 7
 
@@ -302,4 +317,5 @@ jobs:
             artifacts/*_windows_x64_setup.exe
             artifacts/*.deb
             artifacts/*.AppImage
+            artifacts/*.rpm
             artifacts/SHA256SUMS.txt

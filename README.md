@@ -60,6 +60,7 @@
 | Windows | `rust-radio_<版本>_windows_x64_setup.exe` | NSIS 安装器，双击安装 |
 | Linux | `rust-radio_<版本>_linux_amd64.deb` | Debian / Ubuntu：`sudo apt install ./rust-radio_*.deb` |
 | Linux | `rust-radio_<版本>_linux_amd64.AppImage` | 免安装：`chmod +x` 后直接运行 |
+| Linux | `rust-radio_<版本>_linux_amd64.rpm` | Fedora / RHEL / openSUSE：`sudo dnf install ./rust-radio-*.rpm` |
 
 macOS 包为 ad-hoc 签名、未做 Apple 公证，首次打开若提示“已损坏”，执行
 `xattr -dr com.apple.quarantine "/Applications/云听电台.app"`。
@@ -101,6 +102,10 @@ cargo packager -p rust-radio-app --release --formats nsis
 
 # Linux（.deb / AppImage）
 cargo packager -p rust-radio-app --release --formats deb,appimage
+
+# Linux（RPM，cargo-packager 暂不支持，用 cargo-generate-rpm）
+cargo install cargo-generate-rpm --locked
+cargo generate-rpm -p crates/rust-radio-app --auto-req builtin
 ```
 
 产物在 `dist/`。版本号取自 `Cargo.toml` 的 `[workspace.package] version`。
@@ -116,7 +121,7 @@ git tag v0.1.0 && git push origin v0.1.0
 ```
 
 `.github/workflows/release.yml` 会校验 tag 与 Cargo 版本一致，跑 fmt/clippy/test，
-然后构建 macOS 通用 DMG（`lipo` 双架构）、Windows NSIS 安装器、Linux deb + AppImage，
+然后构建 macOS 通用 DMG（`lipo` 双架构）、Windows NSIS 安装器、Linux deb + AppImage + RPM，
 创建 GitHub Release 并附 `SHA256SUMS.txt`。
 也可在 Actions 页手动 dispatch（关掉发布开关则只保留 artifacts）。
 

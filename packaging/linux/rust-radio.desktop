@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=云听电台
+Name[zh_CN]=云听电台
+GenericName=网络电台
+Comment=云听电台桌面客户端
+Exec=rust-radio
+Icon=rust-radio
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+Keywords=radio;电台;广播;
+StartupWMClass=rust-radio
