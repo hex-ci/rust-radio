@@ -1787,39 +1787,25 @@ impl App {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new("默认音质").size(12.5));
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        ui.label(
-                            RichText::new(if self.store.quality_high {
-                                "高清 AAC"
-                            } else {
-                                "标清"
-                            })
-                            .size(12.0)
-                            .color(theme::DIM),
-                        );
+                        let mut high = self.store.quality_high;
+                        if ui.selectable_label(!high, "标清").clicked() && high {
+                            high = false;
+                        }
+                        if ui.selectable_label(high, "高清 AAC").clicked() && !high {
+                            high = true;
+                        }
+                        if high != self.store.quality_high {
+                            self.store.quality_high = high;
+                            self.save_store();
+                        }
                     });
                 });
-                ui.add_space(6.0);
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("音量").size(12.5));
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        ui.label(
-                            RichText::new(format!("{:.0}%", self.volume * 100.0))
-                                .size(12.0)
-                                .color(theme::DIM),
-                        );
-                    });
-                });
-                ui.add_space(6.0);
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("解码器").size(12.5));
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        ui.label(
-                            RichText::new(rust_radio_audio::decoder_name())
-                                .size(10.5)
-                                .color(theme::DIM),
-                        );
-                    });
-                });
+                ui.add_space(4.0);
+                ui.label(
+                    RichText::new("切换后，下一次播放生效。")
+                        .size(10.5)
+                        .color(theme::FAINT),
+                );
             });
         ui.add_space(16.0);
 
@@ -1884,6 +1870,12 @@ impl App {
                     });
                 });
                 ui.add_space(6.0);
+                ui.label(
+                    RichText::new(format!("解码器 {}", rust_radio_audio::decoder_name()))
+                        .size(10.5)
+                        .color(theme::FAINT),
+                );
+                ui.add_space(4.0);
                 ui.label(
                     RichText::new(
                         "本程序是非官方的第三方客户端，与中央广播电视总台、云听无任何关联，仅供学习与个人使用。\
