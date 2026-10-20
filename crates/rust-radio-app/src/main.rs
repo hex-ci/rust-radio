@@ -25,6 +25,71 @@ fn app_icon() -> egui::IconData {
     }
 }
 
+/// macOS 的标准「应用菜单」由 AppKit 生成，默认会跟随可执行文件名显示成
+/// About rust-radio / Hide rust-radio。这里在 NSApp 建好后统一改成中文。
+#[cfg(target_os = "macos")]
+#[allow(unexpected_cfgs)] // objc 0.2 的宏里带 cargo-clippy cfg
+pub(crate) fn localize_macos_menu() {
+    use objc::runtime::{Object, Sel};
+    use objc::{class, msg_send, sel, sel_impl};
+    use std::ffi::CString;
+
+    unsafe fn nsstring(s: &str) -> *mut Object {
+        let c = CString::new(s).unwrap_or_default();
+        msg_send![class!(NSString), stringWithUTF8String: c.as_ptr()]
+    }
+
+    unsafe {
+        let app: *mut Object = msg_send![class!(NSApplication), sharedApplication];
+        if app.is_null() {
+            return;
+        }
+        let menu: *mut Object = msg_send![app, mainMenu];
+        if menu.is_null() {
+            return;
+        }
+        let count: usize = msg_send![menu, numberOfItems];
+        if count == 0 {
+            return;
+        }
+        let app_item: *mut Object = msg_send![menu, itemAtIndex: 0usize];
+        let _: () = msg_send![app_item, setTitle: nsstring("云听电台")];
+        let submenu: *mut Object = msg_send![app_item, submenu];
+        if submenu.is_null() {
+            return;
+        }
+
+        let rename = |item: *mut Object, action: &str, title: &str| {
+            let wanted = Sel::register(action);
+            let actual: Sel = msg_send![item, action];
+            if actual == wanted {
+                let _: () = msg_send![item, setTitle: nsstring(title)];
+            }
+        };
+
+        let n: usize = msg_send![submenu, numberOfItems];
+        for i in 0..n {
+            let item: *mut Object = msg_send![submenu, itemAtIndex: i];
+            rename(item, "orderFrontStandardAboutPanel:", "关于 云听电台");
+            rename(item, "hide:", "隐藏 云听电台");
+            rename(item, "hideOtherApplications:", "隐藏其他");
+            rename(item, "unhideAllApplications:", "全部显示");
+            rename(item, "terminate:", "退出 云听电台");
+            let sub: *mut Object = msg_send![item, submenu];
+            let title: *mut Object = msg_send![item, title];
+            let is_services: bool = if title.is_null() {
+                false
+            } else {
+                let s: *const i8 = msg_send![title, UTF8String];
+                s.is_null() || std::ffi::CStr::from_ptr(s).to_string_lossy() == "Services"
+            };
+            if is_services && !sub.is_null() {
+                let _: () = msg_send![item, setTitle: nsstring("服务")];
+            }
+        }
+    }
+}
+
 fn main() -> eframe::Result<()> {
     let data_dir = store::data_dir();
 

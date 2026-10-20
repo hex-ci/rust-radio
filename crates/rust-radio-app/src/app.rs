@@ -181,6 +181,9 @@ impl App {
         engine.set_volume(store.volume);
 
         let (tx, rx) = mpsc::channel();
+        #[cfg(target_os = "macos")]
+        crate::localize_macos_menu();
+
         let mut app = Self {
             tx,
             rx,

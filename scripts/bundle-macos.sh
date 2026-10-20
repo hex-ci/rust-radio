@@ -50,6 +50,13 @@ cp "$ROOT/target/release/$BIN" "$APP/Contents/MacOS/$BIN"
 cp "$BUILD/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
+# 让 AppKit 的标准菜单（关于、服务、隐藏…）按简体中文显示，而不是回退英文
+mkdir -p "$APP/Contents/Resources/zh-Hans.lproj"
+cat > "$APP/Contents/Resources/zh-Hans.lproj/InfoPlist.strings" <<STRINGS
+CFBundleName = "云听电台";
+CFBundleDisplayName = "云听电台";
+STRINGS
+
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -59,6 +66,13 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleDisplayName</key><string>云听电台</string>
     <key>CFBundleExecutable</key><string>rust-radio</string>
     <key>CFBundleIdentifier</key><string>com.hex.rust-radio</string>
+    <key>CFBundleDevelopmentRegion</key><string>zh_CN</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>zh-Hans</string>
+        <string>en</string>
+    </array>
+    <key>LSHasLocalizedDisplayName</key><true/>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>${APP_VERSION}</string>
