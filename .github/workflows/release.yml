@@ -102,8 +102,19 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      # 仓库里锁了 rust-toolchain.toml，cargo 实际用的是那个工具链，
+      # 上面 dtolnay 装到 stable 上的 target 它看不到，这里按锁定版本再装一遍。
+      - name: 给锁定工具链补装 macOS 交叉目标
+        run: |
+          set -euo pipefail
+          channel="$(sed -n 's/^channel *= *"\([^"]*\)".*/\1/p' rust-toolchain.toml | head -n1)"
+          if [ -z "$channel" ]; then
+            echo "::error::rust-toolchain.toml 里没有 channel"
+            exit 1
+          fi
+          rustup target add --toolchain "$channel" aarch64-apple-darwin x86_64-apple-darwin
+          rustup target list --installed --toolchain "$channel"
 
       - uses: Swatinem/rust-cache@v2
         with:
