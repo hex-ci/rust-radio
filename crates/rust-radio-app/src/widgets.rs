@@ -269,13 +269,10 @@ mod tests {
                     text_rect.top() + text_ink.center().y
                 );
 
-                // 同样的文字按行盒居中会偏多少：证明这不是 0 偏移的空操作
-                let line_box_offset =
-                    (text_rect.top() + text_galley.size().y * 0.5 - center_y).abs();
-                assert!(
-                    line_box_offset > 0.2,
-                    "{text} 行盒与墨迹中心恰好一致（{line_box_offset}），测试失去意义"
-                );
+                // 行盒居中与墨迹居中的差值随字体变化（Windows 上 1px，macOS 的
+                // PingFang 上可能正好是 0），不能拿来断言；这里只钉住不变量：
+                // 墨迹中心必须落在中线上，且文字确实有高度。
+                assert!(text_rect.height() > 0.0, "{text} 排出来是空的");
 
                 let (glyph, fill) = icon.glyph();
                 let icon_galley = p.layout_no_wrap(
