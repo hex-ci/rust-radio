@@ -75,6 +75,7 @@ macOS 通用包（`lipo` 双架构）/ Windows zip / Linux tar.gz，跑测试，
 - rubato 已升到 5.x：缓冲走 `audioadapter` 适配器（`InterleavedSlice`），`SincFixedIn` / `Vec<Vec<f32>>` 那套旧 API 不存在了；
   默认的 `fft_resampler` 特性是关的，只用异步 sinc。
 - 回听 CDN 对 HEAD 返回 `Content-Length: 0`，`mp4::probe_len` 会退到 Range 探测，别把 0 当有效长度。
+- 版本号只从 `[workspace.package] version` 取：代码里用 `env!("CARGO_PKG_VERSION")` 显示，打包脚本从 Cargo.toml 读；不要写死版本字符串。
 - 应用图标由 `scripts/make-icon.swift` 生成；`crates/rust-radio-app/assets/app-icon-1024.png` 是运行时内嵌副本，改图标要同时重新生成这两处（`bash scripts/bundle-macos.sh` 只更新 `.app`）。
 - `--selftest` 会真的打开声卡并以 0.35 音量放音，失败返回非 0；`--audit` / `--check-live` 要开窗，不能当 CI 用。
 - GUI 模式阻塞到窗口关闭；自动化截图用上面的 `--view` / `--search` / `--size` 组合。

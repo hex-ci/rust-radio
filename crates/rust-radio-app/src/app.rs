@@ -1868,7 +1868,7 @@ impl App {
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new("云听电台").size(12.5).strong());
-                    ui.label(RichText::new("0.1.0").size(11.0).color(theme::DIM));
+                    ui.label(RichText::new(env!("CARGO_PKG_VERSION")).size(11.0).color(theme::DIM));
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         let font = theme::regular(9.5);
                         let w = ui.painter().layout_no_wrap("非官方客户端".to_string(), font.clone(), theme::AMBER).size().x + 16.0;
