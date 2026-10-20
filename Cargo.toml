@@ -3,7 +3,7 @@ members = ["crates/rust-radio-core", "crates/rust-radio-audio", "crates/rust-rad
 resolver = "2"
 
 [workspace.package]
-version = "0.1.2"
+version = "1.0.0"
 edition = "2021"
 license = "MIT"
 authors = ["Hex"]
