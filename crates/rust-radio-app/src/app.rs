@@ -3751,6 +3751,7 @@ impl App {
         );
         let q_resp = q_resp.on_hover_text("点击切换音质");
         egui::Popup::menu(&q_resp).show(|ui| {
+            ui.spacing_mut().button_padding = egui::vec2(10.0, 5.0);
             ui.set_min_width(150.0);
             if ui
                 .selectable_label(self.store.quality_high, "高清（AAC 132k+）")
