@@ -1,7 +1,7 @@
 # 云听电台
 
 用纯 Rust 编写的云听电台桌面客户端，支持 macOS / Windows / Linux。界面由 `egui` 自绘，
-音频在内置解码器（libfdk-aac + symphonia）中完成，`cpal` 直接输出，单个二进制即可运行。
+音频在内置解码器（libfdk-aac + symphonia）中完成，`cpal` 直接输出。
 
 ![CI](https://github.com/hex-ci/rust-radio/actions/workflows/ci.yml/badge.svg)
 ![Release](https://github.com/hex-ci/rust-radio/actions/workflows/release.yml/badge.svg)
@@ -52,7 +52,7 @@
 
 ## 下载
 
-从 [Releases](https://github.com/hex-ci/rust-radio/releases) 取最新版本，无需安装 Rust：
+从 [Releases](https://github.com/hex-ci/rust-radio/releases) 取最新版本：
 
 | 平台 | 文件 | 安装方式 |
 |---|---|---|
@@ -62,13 +62,25 @@
 | Linux | `rust-radio_<版本>_linux_amd64.AppImage` | 免安装：`chmod +x` 后直接运行 |
 | Linux | `rust-radio_<版本>_linux_amd64.rpm` | Fedora / RHEL / openSUSE：`sudo dnf install ./rust-radio-*.rpm` |
 
-macOS 包为 ad-hoc 签名、未做 Apple 公证，首次打开若提示“已损坏”，执行
-`xattr -dr com.apple.quarantine "/Applications/云听电台.app"`。
+macOS 包为 ad-hoc 签名、未做 Apple 公证，Gatekeeper 会拦（macOS 15 起右键「打开」已不能绕过）。
+双击 DMG 就被挡住时，先去掉镜像的隔离标记再打开：
+
+```bash
+xattr -d com.apple.quarantine ~/Downloads/rust-radio_<版本>_macos_universal.dmg
+```
+
+拖进 Applications 后首次启动仍被拦，再对应用本体执行一次：
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/云听电台.app"
+```
+
+不想敲命令行：打开「系统设置 → 隐私与安全性」，在“安全性”区域点对应条目的“仍要打开”。
 
 ## 快速开始
 
 需要 **Rust 1.99.1+**。解码器静态编进二进制；首次构建会编译随
-`fdk-aac-sys` 附带的 libfdk-aac C++ 源码（macOS 上约 15 秒）。
+`fdk-aac-sys` 附带的 libfdk-aac C++ 源码。
 
 ```bash
 cargo run -p rust-radio-app                       # 启动
@@ -157,17 +169,6 @@ crates/
    AAC 交给静态编译的 libfdk-aac，MP4/MP3 用 symphonia，HLS/ADTS/MPEG-TS 由引擎自行处理。
 2. **播放地址不落盘**：每次播放前重新调用详情接口取临时令牌，报错重连也必须重新取地址。
 3. **降级必须可见**：缓存年龄、当前线路、限流文案都明确展示，不静默失败。
-
-## 平台状态
-
-- **macOS**：主要开发与验收平台；`.app` 打包、原生红绿灯、音视频链路均已实机验证。
-- **Windows / Linux**：代码无平台特定 API，CI 会构建并跑测试；GUI 与音频设备尚未实机验收。
-
-## 已知限制
-
-- libfdk-aac 自身是 Fraunhofer FDK 许可（非 OSI），AAC 专利授权需自行评估；分发二进制前请阅读其 NOTICE。
-- 直播暂停恢复需要重新解析地址，会有 1–2 秒重新缓冲。
-- 未实现系统托盘、系统媒体键（SMTC / MPRIS）、全局快捷键、回听倍速、开机自启。
 
 ## 参与贡献
 
