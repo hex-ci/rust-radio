@@ -3853,20 +3853,26 @@ impl App {
                 theme::WEAK
             },
         );
-        sresp.context_menu(|ui| {
-            ui.set_min_width(120.0);
-            for m in [15, 30, 45, 60, 90] {
-                if ui.button(format!("{m} 分钟后停止")).clicked() {
-                    self.sleep_minutes = m;
-                    self.sleep_until = Some(Instant::now() + Duration::from_secs(m as u64 * 60));
+        let sresp = sresp.on_hover_text("点击设置睡眠定时");
+        let sleep_toggle =
+            (sresp.clicked() || sresp.secondary_clicked()).then_some(egui::SetOpenCommand::Toggle);
+        egui::Popup::menu(&sresp)
+            .open_memory(sleep_toggle)
+            .show(|ui| {
+                ui.set_min_width(120.0);
+                for m in [15, 30, 45, 60, 90] {
+                    if ui.button(format!("{m} 分钟后停止")).clicked() {
+                        self.sleep_minutes = m;
+                        self.sleep_until =
+                            Some(Instant::now() + Duration::from_secs(m as u64 * 60));
+                        ui.close();
+                    }
+                }
+                if self.sleep_until.is_some() && ui.button("取消定时").clicked() {
+                    self.sleep_until = None;
                     ui.close();
                 }
-            }
-            if self.sleep_until.is_some() && ui.button("取消定时").clicked() {
-                self.sleep_until = None;
-                ui.close();
-            }
-        });
+            });
         cx += sleep_w + g;
 
         // 音量：图标 + 滑杆，占位 26 + 84
