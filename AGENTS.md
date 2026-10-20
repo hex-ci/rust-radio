@@ -77,6 +77,8 @@ macOS 通用包（`lipo` 双架构）/ Windows zip / Linux tar.gz，跑测试，
 - 回听 CDN 对 HEAD 返回 `Content-Length: 0`，`mp4::probe_len` 会退到 Range 探测，别把 0 当有效长度。
 - 版本号只从 `[workspace.package] version` 取：代码里用 `env!("CARGO_PKG_VERSION")` 显示，打包脚本从 Cargo.toml 读；不要写死版本字符串。
 - 应用图标由 `scripts/make-icon.swift` 生成；`crates/rust-radio-app/assets/app-icon-1024.png` 是运行时内嵌副本，改图标要同时重新生成原始图与 `@2x` 副本（`cargo packager` 用 `@2x` 那张生成 icns）。
+- Windows 的 exe 图标/版本资源由 `crates/rust-radio-app/build.rs` 把 `assets/app.ico` 编进去（winit 只设 ICON_SMALL，
+  窗口类 `hIcon: 0`，任务栏要靠 exe 里的图标资源）；改图标时跑 `python scripts/make-ico.py` 重新导出 `app.ico`（脚本只用标准库）。
 - `--selftest` 会真的打开声卡并以 0.35 音量放音，失败返回非 0；`--audit` / `--check-live` 要开窗，不能当 CI 用。
 - GUI 模式阻塞到窗口关闭；自动化截图用上面的 `--view` / `--search` / `--size` 组合。
 - Windows release 构建带 `windows_subsystem = "windows"`（`main.rs` 首行），双击不会弹控制台；

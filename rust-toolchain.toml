@@ -1,0 +1,5 @@
+# 锁工具链：Windows 上 rustup 会用 MSVC 主机三元组（fdk-aac-sys 的 C++ 部分
+# 在 MinGW/GCC 下编译不过），macOS / Linux 各用本机三元组。
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy"]
