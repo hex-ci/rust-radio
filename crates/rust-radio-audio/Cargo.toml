@@ -4,7 +4,6 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-rust-version.workspace = true
 description = "云听电台音频引擎：内置解码（fdk-aac/symphonia）+ cpal 输出，直播/回听统一状态机"
 
 [dependencies]

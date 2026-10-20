@@ -34,13 +34,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential pkg-config libasound2-dev libxkbcommon-dev libwayland-dev
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: ci-${{ matrix.os }}
+      # 读 rust-toolchain.toml，装的就是仓库钉住的版本（自带 Swatinem 缓存）
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Format
         run: cargo fmt --all --check

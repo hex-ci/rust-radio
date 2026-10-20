@@ -4,7 +4,6 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-rust-version.workspace = true
 description = "云听电台接口客户端：签名、电台列表、节目单、回听、本地索引搜索"
 
 [dependencies]

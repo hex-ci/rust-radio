@@ -6,7 +6,7 @@
 ![CI](https://github.com/hex-ci/rust-radio/actions/workflows/ci.yml/badge.svg)
 ![Release](https://github.com/hex-ci/rust-radio/actions/workflows/release.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Rust](https://img.shields.io/badge/rust-1.95%2B-orange.svg)
+![Rust](https://img.shields.io/badge/rust-toolchain.toml-orange.svg)
 
 > **非官方客户端。** 与中央广播电视总台、云听无任何关联，仅供学习与个人使用。
 > 音频与图文版权归原权利人所有；本程序不内置、不缓存、不分发任何音频内容。
@@ -79,7 +79,7 @@ xattr -dr com.apple.quarantine "/Applications/云听电台.app"
 
 ## 快速开始
 
-需要 **Rust 1.95+**；实际构建用的编译器版本由仓库里的 `rust-toolchain.toml` 锁定（rustup 会自动装上）。解码器静态编进二进制；首次构建会编译随
+需要 rustup；编译器版本由仓库里的 `rust-toolchain.toml` 锁定（进入目录后 rustup 自动安装，当前 1.99.1），不用自己挑版本。解码器静态编进二进制；首次构建会编译随
 `fdk-aac-sys` 附带的 libfdk-aac C++ 源码。
 
 ```bash

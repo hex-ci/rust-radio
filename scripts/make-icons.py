@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""从 app-icon-1024.png 生成 Windows 用的 app.ico（只用标准库，不需要 Pillow）。
+"""从 app-icon-1024.png 生成整套平台图标（只用标准库，不需要 Pillow）。
 
-为什么要单独出一份 .ico：任务栏按钮取窗口的 ICON_BIG，winit 只设了 ICON_SMALL
-（egui 的 `ViewportBuilder::with_icon` 走的也是这条），窗口类又是 `hIcon: 0`，
-所以任务栏/资源管理器实际用的是 exe 里内嵌的图标资源——由 build.rs 通过
-winresource 把这份 .ico 编进去。
+产物（`crates/rust-radio-app/assets/` 下）：
+  icons/16x16.png 32x32.png 64x64.png 128x128.png 256x256.png 512x512.png 512x512@2x.png
+      给 cargo-packager：macOS 由这组图生成 icns，Linux 按尺寸装进 hicolor/<N>x<N>/apps/
+      （icns 的槽位是「像素尺寸 ÷ 密度」，所以只出这些合法尺寸；512x512@2x 是 1024px）
+  icons/app.ico
+      给 build.rs 编进 exe：任务栏取窗口的 ICON_BIG，winit 只设 ICON_SMALL，
+      窗口类 `hIcon: 0`，所以任务栏/资源管理器读的是 exe 内嵌的图标资源。
+      .ico 内部 16/24/32/48/64/128 存 32 位 DIB，256 存 PNG。
 
-尺寸：16/24/32/48/64/128 存 32 位 DIB（兼容 rc.exe 与老工具），256 存 PNG。
 缩小用面积平均，先按 alpha 预乘再平均，避免透明边缘渗出深色。
 
 用法：
-    python scripts/make-ico.py                     # 用默认路径
-    python scripts/make-ico.py 源.png 目标.ico      # 指定输入输出
+    python scripts/make-icons.py
+    python scripts/make-icons.py 源.png 输出目录
 """
 
 from __future__ import annotations
@@ -23,10 +26,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SRC = ROOT / "crates/rust-radio-app/assets/app-icon-1024.png"
-DEFAULT_DST = ROOT / "crates/rust-radio-app/assets/app.ico"
+DEFAULT_OUT = ROOT / "crates/rust-radio-app/assets/icons"
 
+# packager 需要的一组尺寸；1024 只以 @2x 形式出现（icns 的 512@2x 槽）
+PNG_SIZES = (16, 32, 64, 128, 256, 512)
+RETINA_SIZE = 1024
 DIB_SIZES = (16, 24, 32, 48, 64, 128)
-PNG_SIZE = 256
+ICO_PNG_SIZE = 256
 
 
 def read_png(path: Path) -> tuple[int, int, list[bytearray]]:
@@ -193,22 +199,34 @@ def png_bytes(rows: list[bytearray], size: int) -> bytes:
         + chunk(b"IEND", b"")
     )
 
-
-def build_ico(src: Path, dst: Path) -> None:
+def build_all(src: Path, out_dir: Path) -> None:
     width, height, rows = read_png(src)
     if width != height:
         sys.exit(f"{src} 不是正方形（{width}x{height}），无法生成图标")
 
-    entries: list[tuple[int, bytes]] = []
-    for size in DIB_SIZES:
-        entries.append((size, dib_bytes(box_resize(width, height, rows, size), size)))
-    entries.append((PNG_SIZE, png_bytes(box_resize(width, height, rows, PNG_SIZE), PNG_SIZE)))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    cache = {}
 
+    def resized(size: int) -> list[bytearray]:
+        if size not in cache:
+            cache[size] = box_resize(width, height, rows, size)
+        return cache[size]
+
+    for size in PNG_SIZES:
+        path = out_dir / f"{size}x{size}.png"
+        path.write_bytes(png_bytes(resized(size), size))
+        print(f"==> {path.name}")
+
+    retina = out_dir / "512x512@2x.png"
+    retina.write_bytes(png_bytes(resized(RETINA_SIZE), RETINA_SIZE))
+    print(f"==> {retina.name}（{RETINA_SIZE}px）")
+
+    entries = [(size, dib_bytes(resized(size), size)) for size in DIB_SIZES]
+    entries.append((ICO_PNG_SIZE, png_bytes(resized(ICO_PNG_SIZE), ICO_PNG_SIZE)))
     offset = 6 + 16 * len(entries)
     directory = bytearray()
     payload = bytearray()
     for size, data in entries:
-        # ICO 的宽高字段是 1 字节，256 记作 0
         directory += struct.pack(
             "<BBBBHHII",
             size if size < 256 else 0,
@@ -222,17 +240,17 @@ def build_ico(src: Path, dst: Path) -> None:
         )
         payload += data
         offset += len(data)
-
-    dst.write_bytes(struct.pack("<HHH", 0, 1, len(entries)) + bytes(directory) + bytes(payload))
-    print(f"==> {dst}（{len(entries)} 档，{dst.stat().st_size} 字节）")
+    ico = out_dir / "app.ico"
+    ico.write_bytes(struct.pack("<HHH", 0, 1, len(entries)) + bytes(directory) + bytes(payload))
+    print(f"==> {ico.name}（{len(entries)} 档，{ico.stat().st_size} 字节）")
 
 
 def main() -> None:
     src = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_SRC
-    dst = Path(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_DST
+    out_dir = Path(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_OUT
     if not src.exists():
         sys.exit(f"找不到源图：{src}")
-    build_ico(src, dst)
+    build_all(src, out_dir)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@
 //! 资源管理器、固定到任务栏、Alt-Tab 的图标同样来自这里。
 
 fn main() {
-    println!("cargo:rerun-if-changed=assets/app.ico");
+    println!("cargo:rerun-if-changed=assets/icons/app.ico");
 
     // 资源和 rc.exe 只对 Windows 目标有意义；build script 按构建机平台编译，
     // 所以非 Windows 构建机这里整段不参与编译。
@@ -21,7 +21,7 @@ fn windows_resource() {
     }
 
     let mut res = winresource::WindowsResource::new();
-    res.set_icon("assets/app.ico");
+    res.set_icon("assets/icons/app.ico");
     res.set("ProductName", "云听电台");
     res.set("FileDescription", "云听电台");
     res.set(

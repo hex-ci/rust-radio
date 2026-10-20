@@ -77,13 +77,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential pkg-config libasound2-dev libxkbcommon-dev libwayland-dev
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: release-checks
+      # 读 rust-toolchain.toml（channel/components 都在文件里），自带缓存
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Format
         run: cargo fmt --all --check
@@ -101,24 +96,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      # 仓库里锁了 rust-toolchain.toml，cargo 实际用的是那个工具链，
-      # 上面 dtolnay 装到 stable 上的 target 它看不到，这里按锁定版本再装一遍。
-      - name: 给锁定工具链补装 macOS 交叉目标
-        run: |
-          set -euo pipefail
-          channel="$(sed -n 's/^channel *= *"\([^"]*\)".*/\1/p' rust-toolchain.toml | head -n1)"
-          if [ -z "$channel" ]; then
-            echo "::error::rust-toolchain.toml 里没有 channel"
-            exit 1
-          fi
-          rustup target add --toolchain "$channel" aarch64-apple-darwin x86_64-apple-darwin
-          rustup target list --installed --toolchain "$channel"
-
-      - uses: Swatinem/rust-cache@v2
+      # 读 rust-toolchain.toml，额外补两个 darwin target（交叉编通用二进制用）
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          key: release-macos
+          target: aarch64-apple-darwin, x86_64-apple-darwin
 
       - name: 安装 cargo-packager
         run: cargo install cargo-packager --locked
@@ -167,11 +148,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: release-windows
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: 安装 cargo-packager
         run: cargo install cargo-packager --locked
@@ -214,11 +191,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential pkg-config libasound2-dev libxkbcommon-dev libwayland-dev
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: release-linux
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: 安装 cargo-packager
         run: cargo install cargo-packager --locked

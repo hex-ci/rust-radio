@@ -4,7 +4,6 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-rust-version.workspace = true
 description = "云听电台桌面客户端"
 
 [dependencies]
@@ -35,7 +34,7 @@ identifier = "com.hex.rust-radio"
 description = "非官方云听电台桌面客户端"
 category = "Music"
 out-dir = "../../dist"
-icons = ["assets/app-icon-1024@2x.png", "assets/app-icon-512.png"]
+icons = ["assets/icons/*.png"]
 binaries-dir = "../../target/release"
 binaries = [{ path = "rust-radio", main = true }]
 
