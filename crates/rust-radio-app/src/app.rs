@@ -1998,7 +1998,7 @@ impl App {
             theme::bold(10.0),
             theme::ACCENT,
         );
-        audit::text(
+        let title_rect = audit::text(
             &p,
             Pos2::new(rect.left() + 24.0, rect.top() + 46.0),
             Align2::LEFT_TOP,
@@ -2017,7 +2017,7 @@ impl App {
         );
         audit::text(
             &p,
-            Pos2::new(rect.left() + 24.0, rect.top() + 84.0),
+            Pos2::new(rect.left() + 24.0, title_rect.bottom() + 1.0),
             Align2::LEFT_TOP,
             meta,
             theme::regular(12.0),
