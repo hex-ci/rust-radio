@@ -740,9 +740,11 @@ impl App {
             ),
             Vec2::new(btn_w, 26.0),
         );
+        // 内高要容得下 TextEdit 的自然高度（行高 + 内边距 = 28），否则控件会顶到顶部溢出、
+        // egui 的垂直居中失效，文字就会偏下。上下各留 3px。
         let field_rect = Rect::from_min_max(
-            Pos2::new(search_rect.left() + 30.0, search_rect.top() + 4.0),
-            Pos2::new(btn_rect.left() - 8.0, search_rect.bottom() - 4.0),
+            Pos2::new(search_rect.left() + 30.0, search_rect.top() + 3.0),
+            Pos2::new(btn_rect.left() - 8.0, search_rect.bottom() - 3.0),
         );
         let hovered = ui.rect_contains_pointer(search_rect) || active;
         ui.painter().rect(
@@ -756,17 +758,21 @@ impl App {
             Stroke::new(1.0, theme::white_alpha(if hovered { 40 } else { 26 })),
             StrokeKind::Inside,
         );
-        icons::draw(
+        icons::draw_ink_centered(
             ui.painter(),
-            Rect::from_center_size(
-                Pos2::new(search_rect.left() + 16.0, search_rect.center().y),
-                Vec2::splat(14.0),
-            ),
+            Pos2::new(search_rect.left() + 16.0, search_rect.center().y),
             Icon::Search,
             if active { theme::TEXT } else { theme::WEAK },
             15.0,
         );
-        let text_rect = field_rect.translate(Vec2::new(0.0, -1.0));
+        // TextEdit 按行盒把文字居中，墨迹中心与行盒中心差 bias（本机 0.5px，随字体变化），
+        // 这里按真实排版算出来再往反方向平移，不再写死像素值。
+        let hint =
+            ui.painter()
+                .layout_no_wrap("搜索电台".to_owned(), theme::regular(12.0), theme::WEAK);
+        // bias = 墨迹中心 - 行盒中心；控件按行盒居中，所以要往反方向平移回来
+        let bias = widgets::ink_rect(&hint).center().y - hint.size().y * 0.5;
+        let text_rect = field_rect.translate(Vec2::new(0.0, -bias));
         let mut child = ui.new_child(
             egui::UiBuilder::new()
                 .max_rect(text_rect)
@@ -2210,8 +2216,11 @@ impl App {
             ui.label(RichText::new(sub).size(11.0).color(theme::WEAK));
             if more {
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    // selectable(false)：Label 默认是可选中文本，会把鼠标变成输入光标（I 型）；
+                    // 这里它是按钮，用和其他可点区域一致的默认箭头。
                     let resp = ui.add(
                         egui::Label::new(RichText::new("查看全部 →").size(11.0).color(theme::DIM))
+                            .selectable(false)
                             .sense(Sense::click()),
                     );
                     if resp.clicked() {
